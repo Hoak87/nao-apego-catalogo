@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>não apego — fotos</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #fafaf8; --surface: #fff; --border: #e8e4df;
+      --text: #1a1a1a; --muted: #8a8580; --accent: #2d2d2d;
+      --green: #25d366; --red: #e74c3c;
+    }
+    body { background: var(--bg); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: var(--text); }
+
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 16px;
+      position: sticky; top: 0; z-index: 10;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .logo { font-size: 1rem; font-weight: 300; letter-spacing: 0.18em; }
+    .counter { font-size: 0.8rem; color: var(--muted); }
+
+    .list { padding: 12px 16px 80px; display: flex; flex-direction: column; gap: 10px; }
+
+    .piece-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      transition: background 0.1s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .piece-card:active { background: #f0ece8; }
+    .piece-card.uploading { opacity: 0.5; pointer-events: none; }
+    .piece-card.done { border-color: var(--green); }
+
+    .thumb {
+      width: 52px; height: 70px;
+      border-radius: 6px;
+      background: #f0ece8;
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; overflow: hidden;
+    }
+    .thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+    .piece-info { flex: 1; min-width: 0; }
+    .piece-id   { font-size: 0.7rem; color: var(--muted); font-weight: 600; letter-spacing: 0.06em; }
+    .piece-desc { font-size: 0.88rem; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .piece-meta { font-size: 0.75rem; color: var(--muted); margin-top: 3px; }
+
+    .add-icon {
+      width: 32px; height: 32px;
+      border: 1.5px dashed var(--border);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; color: var(--muted);
+      flex-shrink: 0;
+    }
+    .piece-card.done .add-icon { border: none; color: var(--green); }
+
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
+    .loading-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+
+    input[type="file"] { display: none; }
+
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: var(--accent); color: #fff;
+      padding: 10px 20px; border-radius: 8px;
+      font-size: 0.85rem;
+      opacity: 0; transition: opacity 0.2s;
+      pointer-events: none; white-space: nowrap;
+      z-index: 100;
+    }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">não apego</div>
+  <div class="counter" id="counter"></div>
+</header>
+
+<div id="app">
+  <div class="loading-state">carregando peças…</div>
+</div>
+
+<input type="file" id="filePicker" accept="image/*" capture="environment" />
+<div class="toast" id="toast"></div>
+
+<script>
+  let pieces = [];
+  let activePiece = null;
+
+  // Comprime imagem para max 1200px e retorna { base64, mimeType }
+  function compressImage(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = reject;
+      reader.onload = e => {
+        const img = new Image();
+        img.onerror = reject;
+        img.onload = () => {
+          const MAX = 1200;
+          let { width, height } = img;
+          if (width > MAX || height > MAX) {
+            if (width > height) { height = Math.round(height * MAX / width); width = MAX; }
+            else                { width  = Math.round(width  * MAX / height); height = MAX; }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width; canvas.height = height;
+          canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+          const base64  = dataUrl.split(',')[1];
+          resolve({ base64, mimeType: 'image/jpeg' });
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function showToast(msg, duration = 2500) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), duration);
+  }
+
+  function updateCounter() {
+    const remaining = pieces.filter(p => !p.done).length;
+    document.getElementById('counter').textContent =
+      remaining > 0 ? `${remaining} sem foto` : 'tudo com foto ✓';
+  }
+
+  function renderList() {
+    const app = document.getElementById('app');
+    const remaining = pieces.filter(p => !p.done);
+
+    if (!remaining.length) {
+      app.innerHTML = `<div class="empty">🎉 Todas as peças têm foto!</div>`;
+      updateCounter();
+      return;
+    }
+
+    app.innerHTML = `<div class="list">${remaining.map(p => `
+      <div class="piece-card ${p.done ? 'done' : ''}" data-row="${p.row}" id="card-${p.row}">
+        <div class="thumb" id="thumb-${p.row}">
+          ${p.localPreview
+            ? `<img src="${p.localPreview}">`
+            : '👗'}
+        </div>
+        <div class="piece-info">
+          <div class="piece-id">${p.id}</div>
+          <div class="piece-desc">${p.desc}</div>
+          <div class="piece-meta">${[p.brand, p.size, formatPrice(p.price)].filter(Boolean).join(' · ')}</div>
+        </div>
+        <div class="add-icon" id="icon-${p.row}">
+          ${p.done ? '✓' : '+'}
+        </div>
+      </div>`).join('')}
+    </div>`;
+
+    updateCounter();
+
+    document.querySelectorAll('.piece-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const row = parseInt(card.dataset.row);
+        activePiece = pieces.find(p => p.row === row);
+        document.getElementById('filePicker').value = '';
+        document.getElementById('filePicker').click();
+      });
+    });
+  }
+
+  function formatPrice(raw) {
+    const n = parseFloat(String(raw).replace(/[R$\s"]/g, '').replace(',', '.'));
+    if (isNaN(n)) return '';
+    return 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 0 });
+  }
+
+  document.getElementById('filePicker').addEventListener('change', async e => {
+    const file = e.target.files[0];
+    if (!file || !activePiece) return;
+
+    const piece = activePiece;
+    const card  = document.getElementById('card-' + piece.row);
+    const icon  = document.getElementById('icon-' + piece.row);
+    const thumb = document.getElementById('thumb-' + piece.row);
+
+    // Preview local imediato
+    const localUrl = URL.createObjectURL(file);
+    thumb.innerHTML = `<img src="${localUrl}">`;
+    piece.localPreview = localUrl;
+
+    // Spinner no lugar do ícone
+    card.classList.add('uploading');
+    icon.innerHTML = '<div class="spinner"></div>';
+
+    try {
+      const { base64, mimeType } = await compressImage(file);
+
+      const url = await new Promise((resolve, reject) => {
+        google.script.run
+          .withSuccessHandler(resolve)
+          .withFailureHandler(reject)
+          .savePhoto(piece.row, base64, mimeType, piece.id);
+      });
+
+      piece.done = true;
+      card.classList.remove('uploading');
+      card.classList.add('done');
+      icon.textContent = '✓';
+      showToast(`${piece.id} salvo ✓`);
+      updateCounter();
+
+      // Remove o card após 1.5s
+      setTimeout(() => {
+        card.style.transition = 'opacity 0.3s';
+        card.style.opacity = '0';
+        setTimeout(() => card.remove(), 300);
+        const remaining = pieces.filter(p => !p.done);
+        if (!remaining.length) {
+          document.getElementById('app').innerHTML =
+            `<div class="empty">🎉 Todas as peças têm foto!</div>`;
+        }
+      }, 1500);
+
+    } catch (err) {
+      card.classList.remove('uploading');
+      icon.textContent = '+';
+      thumb.innerHTML = '👗';
+      piece.localPreview = null;
+      showToast('Erro ao salvar. Tente novamente.');
+      console.error(err);
+    }
+  });
+
+  // Carrega peças
+  google.script.run
+    .withSuccessHandler(data => {
+      pieces = data;
+      renderList();
+    })
+    .withFailureHandler(err => {
+      document.getElementById('app').innerHTML =
+        `<div class="empty">Erro ao carregar peças.<br><small>${err.message}</small></div>`;
+    })
+    .getPieces();
+</script>
+</body>
+</html>

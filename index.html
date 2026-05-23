@@ -1,499 +1,1369 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>não apego</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Não Apego — bazar de desapegos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400;1,9..144,500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ============ Brand tokens ============ */
+:root {
+  --bg: #F2F0EB;
+  --bg-2: #E8E4DB;
+  --ink: #121110;
+  --ink-2: #3A3632;
+  --mute: #8B8278;
+  --line: #D8D2C4;
+  --accent: #B14A2C;
+  --accent-2: #D9A441;
+  --card: #FFFFFF;
+  --f-display: 'Archivo', system-ui, sans-serif;
+  --f-serif: 'Fraunces', Georgia, serif;
+  --f-body: 'Archivo', system-ui, sans-serif;
+  --f-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --display-tracking: -0.03em;
+  --display-weight: 800;
+  --display-style: normal;
+}
+[data-palette="tropical"] {
+  --bg: #F5EDE0; --bg-2: #ECE0CC; --ink: #1F1B16; --ink-2: #3E342A;
+  --mute: #8B7B63; --line: #D9C9B0; --accent: #B14A2C; --accent-2: #D9A441; --card: #FBF5EA;
+}
+[data-palette="ink"] {
+  --bg: #0E0E0E; --bg-2: #171717; --ink: #F5F1E8; --ink-2: #C9BFB0;
+  --mute: #8A8A8A; --line: #2A2A2A; --accent: #E85D3A; --accent-2: #F4C95D; --card: #1A1A1A;
+}
+[data-type="editorial"] { --f-display:'Archivo',system-ui,sans-serif; --display-weight:800; --display-tracking:-0.03em; --display-style:normal; }
+[data-type="classic"]   { --f-display:'Fraunces',Georgia,serif; --display-weight:500; --display-tracking:-0.02em; --display-style:normal; }
+[data-type="modern"]    { --f-display:'Archivo',system-ui,sans-serif; --display-weight:900; --display-tracking:-0.04em; --display-style:normal; }
 
-    :root {
-      --bg: #fafaf8;
-      --surface: #ffffff;
-      --border: #e8e4df;
-      --text: #1a1a1a;
-      --muted: #8a8580;
-      --accent: #2d2d2d;
-      --tag-bg: #f0ece8;
-      --wha: #25d366;
-      --wha-dark: #1da851;
-      --radius: 12px;
-    }
+/* ============ Reset ============ */
+*,*::before,*::after{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{font-family:var(--f-body);background:var(--bg);color:var(--ink);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased;transition:background 0.4s,color 0.4s;}
+a{color:inherit;text-decoration:none;}
+button{font:inherit;background:none;border:0;cursor:pointer;color:inherit;}
+img{display:block;max-width:100%;}
+h1,h2,h3,h4,h5,h6,p{margin:0;}
 
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      min-height: 100vh;
-    }
+/* ============ Type ============ */
+.display{font-family:var(--f-display);font-weight:var(--display-weight);font-style:var(--display-style);letter-spacing:var(--display-tracking);line-height:0.92;}
+.serif-it{font-family:var(--f-serif);font-style:italic;font-weight:400;}
+.eyebrow{font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--mute);font-weight:500;}
+.label{font-size:11px;letter-spacing:0.14em;text-transform:uppercase;font-weight:500;}
 
-    /* HEADER */
-    header {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 14px 20px;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-    }
-    .header-inner {
-      max-width: 1200px;
-      margin: 0 auto;
-      display: flex;
-      align-items: center;
-      gap: 14px;
-    }
-    .logo {
-      font-size: 1.15rem;
-      font-weight: 300;
-      letter-spacing: 0.18em;
-      white-space: nowrap;
-    }
-    .search-input {
-      flex: 1;
-      padding: 8px 14px;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      background: var(--bg);
-      font-size: 0.9rem;
-      outline: none;
-      transition: border-color 0.15s;
-      min-width: 0;
-    }
-    .search-input:focus { border-color: var(--accent); }
+/* ============ Layout ============ */
+.wrap{max-width:1440px;margin:0 auto;padding:0 48px;}
+@media(max-width:720px){.wrap{padding:0 20px;}}
 
-    /* FILTERS */
-    .filters-wrap {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 0 20px;
-    }
-    .filters {
-      max-width: 1200px;
-      margin: 0 auto;
-      display: flex;
-      gap: 6px;
-      padding: 10px 0;
-      overflow-x: auto;
-      scrollbar-width: none;
-    }
-    .filters::-webkit-scrollbar { display: none; }
-    .chip {
-      padding: 5px 14px;
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      background: transparent;
-      font-size: 0.82rem;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: all 0.15s;
-      color: var(--text);
-    }
-    .chip:hover { border-color: var(--accent); }
-    .chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+/* ============ Nav ============ */
+.nav{position:sticky;top:0;z-index:40;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--line);}
+.nav-inner{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:18px 48px;max-width:1440px;margin:0 auto;}
+.nav-left{display:flex;gap:28px;font-size:13px;font-weight:500;}
+.nav-left button{padding:6px 0;letter-spacing:-0.01em;opacity:0.7;transition:opacity 0.2s;position:relative;}
+.nav-left button:hover{opacity:1;}
+.nav-left button.is-active{opacity:1;}
+.nav-left button.is-active::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1.5px;background:var(--ink);}
+.nav-right{display:flex;justify-content:flex-end;gap:22px;font-size:13px;align-items:center;}
+.nav-right a{opacity:0.7;transition:opacity 0.2s;}
+.nav-right a:hover{opacity:1;}
+.wa-pill{display:inline-flex;align-items:center;gap:8px;padding:8px 14px 8px 12px;background:var(--ink);color:var(--bg);border-radius:100px;font-size:12px;font-weight:500;transition:transform 0.2s;opacity:1!important;white-space:nowrap;}
+.wa-pill:hover{transform:translateY(-1px);}
+.wa-pill .wa-icon{width:14px;height:14px;flex-shrink:0;fill:currentColor;}
+.logo{font-family:var(--f-display);font-weight:var(--display-weight);font-style:var(--display-style);letter-spacing:var(--display-tracking);font-size:19px;text-transform:lowercase;line-height:1;display:inline-flex;align-items:baseline;gap:1px;}
+.logo .dot{width:5px;height:5px;border-radius:50%;background:var(--accent);display:inline-block;margin:0 6px 2px;align-self:center;}
 
-    /* COUNT */
-    .count-bar {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 10px 20px 4px;
-      font-size: 0.8rem;
-      color: var(--muted);
-    }
+/* ============ Hero ============ */
+.hero{padding:70px 0 80px;border-bottom:1px solid var(--line);}
+.hero-grid{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:end;}
+.hero-title{font-size:clamp(64px,9vw,148px);}
+.hero-title .it{font-family:var(--f-serif);font-style:italic;font-weight:300;letter-spacing:-0.01em;}
+.hero-copy{font-size:17px;line-height:1.5;max-width:380px;margin-bottom:28px;color:var(--ink-2);}
+.hero-cta{display:inline-flex;align-items:center;gap:10px;padding:14px 22px;border:1px solid var(--ink);border-radius:100px;font-size:13px;font-weight:500;transition:all 0.2s;white-space:nowrap;}
+.hero-cta:hover{background:var(--ink);color:var(--bg);}
+.hero-cta .arrow{transition:transform 0.2s;}
+.hero-cta:hover .arrow{transform:translateX(3px);}
+.hero-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:56px;}
+.hero-top .eyebrow-block{display:flex;gap:40px;flex-wrap:wrap;}
+.hero-top .eyebrow-block>div{display:flex;flex-direction:column;gap:6px;}
+.hero-top .eyebrow-block strong{font-weight:500;font-size:13px;letter-spacing:-0.01em;}
+.hero-ticker{font-size:12px;color:var(--mute);letter-spacing:0.06em;display:flex;align-items:center;gap:8px;}
+.pulse{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:pulse 2s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.4;transform:scale(0.85);}}
 
-    /* GRID */
-    .grid {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 12px 16px 48px;
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 10px;
-    }
-    @media (min-width: 480px) {
-      .grid { grid-template-columns: repeat(3, 1fr); }
-    }
-    @media (min-width: 700px) {
-      .grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
-    }
-    @media (min-width: 1000px) {
-      .grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
-    }
+/* ============ Marquee ============ */
+.marquee{padding:14px 0;border-bottom:1px solid var(--line);overflow:hidden;}
+.marquee-track{display:flex;gap:40px;animation:marquee 60s linear infinite;white-space:nowrap;}
+.marquee span{font-family:var(--f-display);font-size:15px;font-weight:500;letter-spacing:-0.01em;display:inline-flex;align-items:center;gap:40px;}
+.marquee span::after{content:'✶';color:var(--accent);font-family:var(--f-serif);}
+@keyframes marquee{from{transform:translateX(0);}to{transform:translateX(-50%);}}
 
-    /* CARD */
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      transition: transform 0.15s, box-shadow 0.15s;
-    }
-    .card:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0,0,0,0.07); }
+/* ============ Section ============ */
+.section{padding:100px 0;border-bottom:1px solid var(--line);}
+.section-head{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:48px;gap:40px;}
+.section-title{font-size:clamp(40px,5vw,72px);max-width:780px;}
+.section-title .it{font-family:var(--f-serif);font-style:italic;font-weight:300;}
+.section-link{font-size:13px;letter-spacing:-0.005em;border-bottom:1px solid var(--ink);padding-bottom:3px;white-space:nowrap;}
 
-    .card-photo {
-      aspect-ratio: 3/4;
-      background: var(--tag-bg);
-      overflow: hidden;
-      position: relative;
-    }
-    .card-photo img {
-      width: 100%; height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-    .card-photo .placeholder {
-      width: 100%; height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 2.5rem;
-      opacity: 0.25;
-    }
-    .badge-reservado {
-      position: absolute;
-      top: 8px; left: 8px;
-      background: rgba(0,0,0,0.6);
-      color: #fff;
-      font-size: 0.67rem;
-      padding: 3px 8px;
-      border-radius: 4px;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-    }
+/* ============ Product grid ============ */
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;}
+@media(max-width:960px){.grid-4{grid-template-columns:repeat(2,1fr);}}
+.product{cursor:pointer;position:relative;background:var(--bg);display:flex;flex-direction:column;}
+.product-image{aspect-ratio:3/4;background:var(--bg-2);position:relative;overflow:hidden;}
+.product-image svg{width:100%;height:100%;display:block;transition:transform 0.6s ease;}
+.product:hover .product-image svg{transform:scale(1.02);}
+.product-overlay{position:absolute;inset:0;background:color-mix(in srgb,var(--ink) 8%,transparent);opacity:0;transition:opacity 0.3s;display:flex;align-items:flex-end;padding:16px;}
+.product:hover .product-overlay{opacity:1;}
+.product-wa{background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:100px;font-size:12px;font-weight:500;display:inline-flex;align-items:center;gap:6px;}
+.product-info{padding:12px 14px 18px;display:flex;flex-direction:column;gap:3px;}
+.product-brand{font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--mute);font-weight:500;}
+.product-name{font-size:14px;font-weight:500;letter-spacing:-0.01em;display:flex;justify-content:space-between;gap:10px;align-items:baseline;}
+.product-name .price{font-family:var(--f-serif);font-style:italic;font-weight:400;font-size:15px;white-space:nowrap;}
+.price-original{text-decoration:line-through;color:var(--mute);font-size:12px;font-style:normal;font-family:var(--f-body);margin-right:4px;}
+.product-meta{font-size:11px;color:var(--mute);display:flex;gap:8px;flex-wrap:wrap;margin-top:2px;}
+.tag{position:absolute;top:12px;left:12px;padding:5px 9px;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;border-radius:100px;font-weight:500;}
+.tag.hot{background:var(--accent);color:#fff;}
+.tag.new{background:var(--ink);color:var(--bg);}
 
-    .card-body {
-      padding: 10px 11px 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-      flex: 1;
-    }
-    .card-brand {
-      font-size: 0.7rem;
-      font-weight: 700;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }
-    .card-desc {
-      font-size: 0.85rem;
-      line-height: 1.35;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
-    .card-tags {
-      display: flex;
-      gap: 4px;
-      flex-wrap: wrap;
-    }
-    .tag {
-      font-size: 0.68rem;
-      padding: 2px 7px;
-      background: var(--tag-bg);
-      border-radius: 4px;
-      color: var(--muted);
-    }
-    .card-footer {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-top: auto;
-      padding-top: 8px;
-    }
-    .price {
-      font-size: 0.95rem;
-      font-weight: 700;
-    }
-    .btn-wha {
-      background: var(--wha);
-      color: #fff;
-      border: none;
-      border-radius: 6px;
-      padding: 6px 10px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      cursor: pointer;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      transition: background 0.15s;
-    }
-    .btn-wha:hover { background: var(--wha-dark); }
+/* ============ Drop system ============ */
+.lote-row{display:flex;align-items:center;justify-content:space-between;gap:6px;margin:6px 0 2px;}
+.lote-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:100px;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;font-weight:700;}
+.lote-badge.l1{background:color-mix(in srgb,var(--ink) 10%,transparent);color:var(--ink);}
+.lote-badge.l2{background:var(--accent-2);color:#1a1510;}
+.lote-badge.l3{background:var(--accent);color:#fff;}
+.lote-days{font-size:10px;color:var(--mute);letter-spacing:0.02em;white-space:nowrap;}
+.lote-track{height:2px;background:var(--line);border-radius:1px;margin:4px 0 8px;overflow:hidden;}
+.lote-fill{height:100%;border-radius:1px;transition:width 0.3s;}
+.lote-fill.l1{background:var(--ink);}
+.lote-fill.l2{background:var(--accent-2);}
+.lote-fill.l3{background:var(--accent);}
+.notify-btn{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--mute);padding:0;cursor:pointer;background:none;border:0;letter-spacing:0.01em;font-family:inherit;transition:color 0.15s;margin-top:2px;}
+.notify-btn:hover{color:var(--ink);}
+.notify-bell{font-size:10px;}
+.product-actions{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;}
+.wa-card-btn{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;background:var(--ink);color:var(--bg);border-radius:100px;font-size:11px;font-weight:500;letter-spacing:0.01em;transition:opacity 0.2s;white-space:nowrap;}
+.wa-card-btn:hover{opacity:0.82;}
+.wa-card-btn svg{width:11px;height:11px;fill:currentColor;flex-shrink:0;}
 
-    /* LOAD MORE */
-    .more-wrap {
-      text-align: center;
-      padding: 8px 0 48px;
-    }
-    .btn-more {
-      padding: 10px 36px;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      background: var(--surface);
-      font-size: 0.88rem;
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-    .btn-more:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+/* ============ Split ============ */
+.split{display:grid;grid-template-columns:1fr 1fr;gap:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);}
+@media(max-width:860px){.split{grid-template-columns:1fr;}}
+.split>div{padding:72px 48px;}
+.split-image{background:var(--bg-2);display:flex;align-items:center;justify-content:center;}
+.split-image svg{width:100%;height:100%;max-height:500px;}
+.split-copy{display:flex;flex-direction:column;justify-content:center;gap:24px;}
+.quote{font-size:clamp(28px,3.5vw,44px);line-height:1.15;letter-spacing:-0.02em;font-weight:400;}
+.quote .it{font-family:var(--f-serif);font-style:italic;font-weight:300;}
 
-    /* STATES */
-    .msg {
-      grid-column: 1 / -1;
-      text-align: center;
-      padding: 60px 20px;
-      color: var(--muted);
-      font-size: 0.95rem;
-      line-height: 1.6;
-    }
-  </style>
+/* ============ Influencers ============ */
+.influencer-row{display:flex;gap:32px;flex-wrap:wrap;padding:40px 0;}
+.influ{display:flex;flex-direction:column;align-items:center;gap:10px;cursor:pointer;}
+.influ-img{width:92px;height:92px;border-radius:50%;background:var(--bg-2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-family:var(--f-display);font-weight:700;font-size:24px;color:var(--mute);letter-spacing:-0.02em;transition:border-color 0.2s;}
+.influ:hover .influ-img{border-color:var(--ink);}
+.influ-name{font-size:12px;font-weight:500;letter-spacing:-0.005em;}
+.influ-count{font-size:10px;color:var(--mute);letter-spacing:0.06em;}
+
+/* ============ VIP Block ============ */
+.vip-block{background:var(--ink);color:var(--bg);padding:80px 48px;display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;}
+@media(max-width:760px){.vip-block{grid-template-columns:1fr;padding:48px 24px;}}
+.vip-block h2{font-size:clamp(40px,5vw,72px);font-family:var(--f-display);font-weight:var(--display-weight);letter-spacing:var(--display-tracking);line-height:0.92;margin-bottom:0;}
+.vip-block .it{font-family:var(--f-serif);font-style:italic;font-weight:300;}
+.vip-block p{font-size:15px;line-height:1.6;opacity:0.75;margin-bottom:24px;}
+.vip-benefits{display:flex;flex-direction:column;gap:10px;margin-bottom:32px;}
+.vip-benefit{display:flex;align-items:flex-start;gap:12px;font-size:14px;opacity:0.85;}
+.vip-benefit::before{content:'—';color:var(--accent-2);flex-shrink:0;font-family:var(--f-serif);}
+.vip-pill{display:inline-flex;align-items:center;gap:10px;padding:14px 22px;border:1px solid currentColor;border-radius:100px;font-size:13px;font-weight:500;transition:all 0.2s;white-space:nowrap;}
+.vip-pill:hover{background:var(--bg);color:var(--ink);border-color:var(--bg);}
+.vip-input-row{display:flex;gap:8px;margin-bottom:14px;}
+.vip-input{flex:1;padding:13px 16px;border:1px solid rgba(255,255,255,0.2);border-radius:100px;background:rgba(255,255,255,0.08);color:var(--bg);font:inherit;font-size:13px;outline:none;transition:border-color 0.2s;}
+.vip-input::placeholder{color:rgba(255,255,255,0.4);}
+.vip-input:focus{border-color:rgba(255,255,255,0.5);}
+.vip-submit{padding:13px 20px;background:var(--bg);color:var(--ink);border:0;border-radius:100px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;transition:opacity 0.2s;}
+.vip-submit:hover{opacity:0.88;}
+.vip-or{font-size:11px;opacity:0.5;text-align:center;margin:10px 0;}
+
+/* ============ Live banner on home ============ */
+.live-banner{background:var(--ink);color:var(--bg);padding:72px 48px;display:grid;grid-template-columns:1fr auto;gap:40px;align-items:end;}
+[data-palette="tropical"] .live-banner{background:var(--accent);}
+.live-banner h2{font-size:clamp(40px,6vw,96px);font-family:var(--f-display);font-weight:var(--display-weight);letter-spacing:var(--display-tracking);line-height:0.9;}
+.live-banner .it{font-family:var(--f-serif);font-style:italic;font-weight:300;}
+.live-banner-meta{display:flex;flex-direction:column;gap:10px;text-align:right;align-items:flex-end;}
+.live-banner-meta .date{font-family:var(--f-serif);font-style:italic;font-size:26px;font-weight:400;}
+.live-banner-meta .loc{font-size:12px;letter-spacing:0.08em;text-transform:uppercase;opacity:0.7;}
+.live-banner-meta .rsvp{margin-top:12px;display:inline-flex;align-items:center;gap:10px;padding:13px 20px;border:1px solid currentColor;border-radius:100px;font-size:13px;font-weight:500;transition:all 0.2s;white-space:nowrap;}
+.live-banner-meta .rsvp:hover{background:var(--bg);color:var(--ink);border-color:var(--bg);}
+
+/* ============ Footer ============ */
+.footer{padding:80px 0 40px;}
+.footer-main{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;padding-bottom:60px;border-bottom:1px solid var(--line);}
+@media(max-width:800px){.footer-main{grid-template-columns:1fr 1fr;}}
+.footer-logo{font-size:clamp(64px,9vw,140px);line-height:0.9;}
+.footer-col h4{font-size:11px;letter-spacing:0.14em;text-transform:uppercase;font-weight:500;margin-bottom:20px;color:var(--mute);}
+.footer-col a{display:block;padding:4px 0;font-size:14px;transition:color 0.15s;}
+.footer-col a:hover{color:var(--accent);}
+.footer-bottom{display:flex;justify-content:space-between;align-items:center;padding-top:30px;font-size:11px;color:var(--mute);letter-spacing:0.06em;flex-wrap:wrap;gap:16px;}
+
+/* ============ Shop page ============ */
+.shop-head{padding:60px 0 30px;border-bottom:1px solid var(--line);}
+.shop-head-top{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:28px;}
+.shop-title{font-size:clamp(48px,6vw,96px);line-height:0.9;}
+.shop-title .it{font-family:var(--f-serif);font-style:italic;font-weight:300;}
+.shop-filters{display:flex;gap:8px;flex-wrap:wrap;padding:20px 0;}
+.filter-chip{padding:8px 14px;border:1px solid var(--line);border-radius:100px;font-size:12px;font-weight:500;transition:all 0.15s;}
+.filter-chip:hover{border-color:var(--ink);}
+.filter-chip.is-on{background:var(--ink);color:var(--bg);border-color:var(--ink);}
+.shop-sort{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-top:1px solid var(--line);font-size:12px;color:var(--mute);letter-spacing:0.06em;}
+.shop-sort select{font:inherit;color:var(--ink);background:transparent;border:0;font-size:12px;letter-spacing:0.06em;cursor:pointer;}
+
+/* ============ Manifesto ============ */
+.manifesto{padding:100px 0 60px;}
+.manifesto-title{font-size:clamp(64px,11vw,200px);line-height:0.88;margin-bottom:80px;}
+.manifesto-title .it{font-family:var(--f-serif);font-style:italic;font-weight:300;}
+.manifesto-body{display:grid;grid-template-columns:1fr 2fr;gap:60px;}
+@media(max-width:860px){.manifesto-body{grid-template-columns:1fr;}}
+.manifesto-body p{font-size:20px;line-height:1.5;margin-bottom:28px;max-width:620px;}
+.manifesto-body p.lead{font-family:var(--f-serif);font-style:italic;font-weight:300;font-size:28px;line-height:1.3;}
+.manifesto-aside{position:sticky;top:120px;align-self:start;}
+.manifesto-aside .num{font-family:var(--f-serif);font-style:italic;font-weight:300;font-size:120px;line-height:1;color:var(--accent);}
+.manifesto-aside .cap{font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:var(--mute);margin-top:12px;}
+
+/* ============ How it works (new) ============ */
+.how-5{display:grid;grid-template-columns:repeat(5,1fr);gap:0;border-top:1px solid var(--line);}
+@media(max-width:1100px){.how-5{grid-template-columns:repeat(3,1fr);}}
+@media(max-width:680px){.how-5{grid-template-columns:1fr;}}
+.how-step{border-right:1px solid var(--line);padding:44px 36px;display:flex;flex-direction:column;justify-content:space-between;min-height:280px;}
+.how-step:last-child{border-right:0;}
+.how-num{font-family:var(--f-serif);font-style:italic;font-weight:300;font-size:64px;line-height:1;color:var(--accent);margin-bottom:32px;}
+.how-step h3{font-size:22px;font-weight:600;letter-spacing:-0.015em;margin-bottom:10px;line-height:1.1;}
+.how-step p{font-size:14px;color:var(--ink-2);line-height:1.55;max-width:240px;}
+
+/* Lote progression visual */
+.lote-viz{display:flex;flex-direction:column;gap:0;border:1px solid var(--line);border-radius:16px;overflow:hidden;margin:60px 0 0;}
+.lote-viz-row{display:grid;grid-template-columns:auto 1fr auto;gap:20px;align-items:center;padding:22px 28px;border-bottom:1px solid var(--line);}
+.lote-viz-row:last-child{border-bottom:0;}
+.lote-viz-row.active{background:color-mix(in srgb,var(--accent) 5%,transparent);}
+.lote-viz-num{font-family:var(--f-serif);font-style:italic;font-weight:300;font-size:36px;color:var(--mute);line-height:1;}
+.lote-viz-info h4{font-size:15px;font-weight:600;letter-spacing:-0.01em;margin-bottom:3px;}
+.lote-viz-info p{font-size:13px;color:var(--mute);}
+.lote-viz-discount{font-family:var(--f-serif);font-style:italic;font-size:28px;font-weight:300;text-align:right;}
+.lote-viz-discount.hot{color:var(--accent);}
+.lote-viz-discount.hotter{color:var(--accent);font-weight:400;}
+.lote-viz-arrow{text-align:center;padding:10px;color:var(--line);font-size:20px;border-bottom:1px solid var(--line);}
+.lote-viz-arrow:last-child{display:none;}
+.no-reserva{display:grid;grid-template-columns:1fr 1fr;gap:0;margin:60px 0 0;border:1px solid var(--line);border-radius:16px;overflow:hidden;}
+@media(max-width:680px){.no-reserva{grid-template-columns:1fr;}}
+.no-reserva-side{padding:32px 28px;}
+.no-reserva-side:first-child{border-right:1px solid var(--line);}
+.no-reserva-side h4{font-size:17px;font-weight:600;letter-spacing:-0.015em;margin-bottom:8px;}
+.no-reserva-side p{font-size:14px;color:var(--ink-2);line-height:1.55;}
+.no-reserva-side .badge{display:inline-block;padding:4px 10px;border-radius:100px;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;font-weight:600;margin-bottom:12px;}
+.badge-green{background:color-mix(in srgb,#4CAF50 15%,transparent);color:#2a6b2a;}
+.badge-red{background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent);}
+
+/* ============ Lives page ============ */
+.live-card{display:grid;grid-template-columns:100px 1fr auto;gap:28px;padding:36px 0;border-bottom:1px solid var(--line);align-items:start;}
+@media(max-width:700px){.live-card{grid-template-columns:1fr;gap:14px;}}
+.live-day{font-family:var(--f-display);font-weight:var(--display-weight);font-size:52px;line-height:0.85;letter-spacing:var(--display-tracking);}
+.live-month{font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--mute);margin-top:6px;}
+.live-status{display:inline-block;padding:4px 10px;border-radius:100px;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;font-weight:600;margin-bottom:10px;}
+.live-status.ao-vivo{background:#E63946;color:#fff;animation:pulse-red 1.5s ease-in-out infinite;}
+.live-status.agendada{background:var(--accent-2);color:var(--ink);}
+.live-status.passada{border:1px solid var(--line);color:var(--mute);}
+@keyframes pulse-red{0%,100%{opacity:1;}50%{opacity:0.65;}}
+.live-card h3{font-size:22px;font-weight:500;letter-spacing:-0.015em;margin-bottom:6px;line-height:1.1;}
+.live-card .host{font-size:13px;color:var(--mute);margin-bottom:8px;}
+.live-card .topic{font-size:14px;color:var(--ink-2);line-height:1.45;max-width:480px;}
+.live-cta-btn{display:inline-flex;align-items:center;gap:8px;padding:12px 20px;border:1px solid var(--ink);border-radius:100px;font-size:13px;font-weight:500;white-space:nowrap;transition:all 0.2s;align-self:flex-start;}
+.live-cta-btn:hover{background:var(--ink);color:var(--bg);}
+.live-cta-btn.past{border-color:var(--line);color:var(--mute);}
+.live-cta-btn.past:hover{background:transparent;color:var(--mute);}
+
+/* ============ Notify modal ============ */
+.modal-overlay{position:fixed;inset:0;z-index:300;background:rgba(18,17,16,0.65);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.2s;}
+.modal-overlay.is-open{opacity:1;pointer-events:auto;}
+.modal-box{background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:24px;padding:40px 36px;max-width:400px;width:calc(100% - 40px);box-shadow:0 32px 80px -12px rgba(0,0,0,0.3);position:relative;}
+.modal-box h3{font-size:26px;font-weight:700;letter-spacing:-0.02em;margin-bottom:6px;line-height:1.1;}
+.modal-piece-name{font-family:var(--f-serif);font-style:italic;font-weight:300;color:var(--accent);font-size:18px;margin-bottom:12px;}
+.modal-box p{font-size:14px;color:var(--ink-2);line-height:1.5;margin-bottom:24px;}
+.modal-input{width:100%;padding:14px 18px;border:1px solid var(--line);border-radius:100px;font:inherit;font-size:14px;background:var(--bg);color:var(--ink);outline:none;transition:border-color 0.2s;margin-bottom:10px;}
+.modal-input:focus{border-color:var(--ink);}
+.modal-submit{width:100%;padding:14px;background:var(--ink);color:var(--bg);border:0;border-radius:100px;font:inherit;font-size:14px;font-weight:600;cursor:pointer;transition:opacity 0.2s;}
+.modal-submit:hover{opacity:0.85;}
+.modal-or{text-align:center;font-size:12px;color:var(--mute);margin:14px 0;}
+.modal-wa-btn{display:flex;align-items:center;justify-content:center;gap:10px;padding:13px;border:1px solid var(--line);border-radius:100px;font-size:13px;font-weight:500;cursor:pointer;transition:all 0.2s;background:none;color:var(--ink);width:100%;font-family:inherit;}
+.modal-wa-btn:hover{border-color:var(--ink);}
+.modal-close{position:absolute;top:16px;right:16px;width:28px;height:28px;border-radius:50%;background:var(--bg-2);display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;}
+.modal-close:hover{background:var(--line);}
+
+/* ============ Page transitions ============ */
+.page{display:none;}
+.page.is-active{display:block;animation:fadein 0.3s ease;}
+@keyframes fadein{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
+
+/* ============ Tweaks panel ============ */
+.tweaks{position:fixed;bottom:20px;right:20px;z-index:100;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:16px;padding:18px;width:280px;box-shadow:0 20px 60px -10px rgba(0,0,0,0.25);font-size:13px;display:none;}
+.tweaks.is-open{display:block;}
+.tweaks h5{font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--mute);margin-bottom:10px;font-weight:600;}
+.tweaks h5:not(:first-child){margin-top:18px;}
+.tweaks-row{display:flex;gap:6px;flex-wrap:wrap;}
+.tw-opt{padding:7px 12px;border:1px solid var(--line);border-radius:100px;font-size:12px;font-weight:500;cursor:pointer;transition:all 0.15s;}
+.tw-opt:hover{border-color:var(--ink);}
+.tw-opt.is-on{background:var(--ink);color:var(--bg);border-color:var(--ink);}
+.tweaks-close{position:absolute;top:12px;right:12px;width:24px;height:24px;border-radius:50%;background:var(--bg-2);display:flex;align-items:center;justify-content:center;font-size:12px;border:0;cursor:pointer;}
+
+@media(max-width:800px){
+  .nav-inner{grid-template-columns:auto 1fr;gap:16px;}
+  .nav-left{display:none;}
+  .hero-grid{grid-template-columns:1fr;gap:32px;}
+  .section{padding:64px 0;}
+  .section-head{flex-direction:column;align-items:flex-start;gap:20px;}
+  .split>div{padding:40px 24px;}
+  .how-step{border-right:0;border-bottom:1px solid var(--line);}
+  .live-card{grid-template-columns:1fr;gap:14px;}
+  .live-banner{grid-template-columns:1fr;gap:28px;}
+  .live-banner-meta{text-align:left;align-items:flex-start;}
+}
+.product-image img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 </head>
-<body>
+<body data-palette="quiet" data-type="editorial" data-lang="pt">
 
-<header>
-  <div class="header-inner">
-    <div class="logo">não apego</div>
-    <input class="search-input" type="search" id="search" placeholder="buscar marca, peça…" />
+<!-- ============ Nav ============ -->
+<header class="nav">
+  <div class="nav-inner">
+    <nav class="nav-left">
+      <button data-route="home" class="is-active">início</button>
+      <button data-route="shop">bazar</button>
+      <button data-route="how">como funciona</button>
+      <button data-route="about">manifesto</button>
+      <button data-route="events">lives</button>
+    </nav>
+    <a class="logo" href="#" onclick="go('home');return false;">
+      não<span class="dot"></span>apego
+    </a>
+    <div class="nav-right">
+      <a href="#" class="nav-ig">@naoapegobazar</a>
+      <a class="wa-pill" id="wa-pill-nav" href="#" target="_blank" rel="noopener"><svg class="wa-icon" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg><span class="nav-wa">abrir whatsapp</span></a>
+    </div>
   </div>
 </header>
 
-<div class="filters-wrap">
-  <div class="filters" id="filters">
-    <button class="chip active" data-size="">todos</button>
-    <button class="chip" data-size="PP">PP</button>
-    <button class="chip" data-size="P">P</button>
-    <button class="chip" data-size="M">M</button>
-    <button class="chip" data-size="G">G</button>
-    <button class="chip" data-size="GG">GG</button>
-    <button class="chip" data-size="U">tamanho único</button>
+<main>
+
+<!-- ============ HOME ============ -->
+<section class="page is-active" data-page="home">
+
+  <div class="hero">
+    <div class="wrap">
+      <div class="hero-top">
+        <div class="eyebrow-block">
+          <div>
+            <span class="eyebrow">catálogo vivo</span>
+            <strong>peças em 3 drops de desconto</strong>
+          </div>
+          <div>
+            <span class="eyebrow">próxima live</span>
+            <strong>quinta · 15.05 · 20h</strong>
+          </div>
+        </div>
+        <div class="hero-ticker">
+          <span class="pulse"></span>
+          <span class="tick-live">247 peças disponíveis agora</span>
+        </div>
+      </div>
+      <div class="hero-grid">
+        <h1 class="display hero-title">
+          bazar<br/>
+          <span class="it">de</span> desapegos<br/>exclusivos
+        </h1>
+        <div>
+          <p class="hero-copy">
+            Peças únicas do closet de influenciadoras e modelos brasileiras.
+            Estado impecável, desconto real — e quanto mais tempo fica, mais barato fica.
+            Quem chegar primeiro, leva.
+          </p>
+          <a href="#" class="hero-cta" onclick="go('shop');return false;">
+            <span>ver o bazar</span>
+            <span class="arrow">→</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="marquee">
+    <div class="marquee-track" id="marquee-track"></div>
+  </div>
+
+  <!-- Featured pieces -->
+  <section class="section" style="padding-top:70px;padding-bottom:0;border-bottom:0;">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 class="display section-title">peças <span class="it">desta</span> semana</h2>
+        <a href="#" class="section-link" onclick="go('shop');return false;">ver catálogo completo (247) →</a>
+      </div>
+    </div>
+    <div class="grid-4" id="featured-grid"></div>
+  </section>
+
+  <!-- Manifesto excerpt -->
+  <section class="split" style="margin-top:100px;">
+    <div class="split-copy">
+      <span class="eyebrow">manifesto · fragmento</span>
+      <p class="quote">
+        As roupas mais bonitas do Brasil estão
+        <span class="it">paradas em closets</span>.
+        A gente acha isso um desperdício. Não Apego é sobre deixar as coisas lindas
+        <span class="it">circularem.</span>
+      </p>
+      <a href="#" class="hero-cta" onclick="go('about');return false;" style="align-self:flex-start;">
+        <span>ler manifesto completo</span>
+        <span class="arrow">→</span>
+      </a>
+    </div>
+    <div class="split-image" id="split-img"></div>
+  </section>
+
+  <!-- Influencers -->
+  <section class="section">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 class="display section-title">quem <span class="it">desapegou</span> esta semana</h2>
+      </div>
+      <div class="influencer-row" id="influencers"></div>
+    </div>
+  </section>
+
+  <!-- Live banner -->
+  <section class="live-banner">
+    <div>
+      <div class="eyebrow" style="color:currentColor;opacity:0.6;margin-bottom:18px;">próxima live · instagram</div>
+      <h2>
+        como usar<br/>
+        <span class="it">as peças</span><br/>do bazar
+      </h2>
+    </div>
+    <div class="live-banner-meta">
+      <span class="date">qui, 15 maio · 20h</span>
+      <span class="loc">@naoapegobazar · gratuita · ao vivo</span>
+      <a href="#" class="rsvp" onclick="go('events');return false;">
+        <span>ativar lembrete</span>
+        <span>→</span>
+      </a>
+    </div>
+  </section>
+
+  <!-- VIP Community -->
+  <section class="vip-block">
+    <div>
+      <div class="eyebrow" style="color:var(--accent-2);margin-bottom:20px;">comunidade vip</div>
+      <h2>você<br/><span class="it">sabe</span><br/>antes.</h2>
+    </div>
+    <div>
+      <p>Entre no grupo VIP e receba: novas coleções em primeira mão, aviso de mudança de drop das peças que você quer, convites para nossas lives e acesso a peças antes do catálogo público.</p>
+      <div class="vip-benefits">
+        <div class="vip-benefit">acesso 24h antes de cada nova coleção</div>
+        <div class="vip-benefit">notificação quando uma peça muda de drop</div>
+        <div class="vip-benefit">convites antecipados para as lives</div>
+        <div class="vip-benefit">canal direto com a Lu para tirar dúvidas</div>
+      </div>
+      <div class="vip-input-row">
+        <input class="vip-input" type="tel" placeholder="seu whatsapp" />
+        <button class="vip-submit" onclick="handleVipSubmit(this)">entrar</button>
+      </div>
+      <div class="vip-or">ou</div>
+      <a class="vip-pill" href="#">entrar no grupo vip →</a>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="wrap">
+      <div class="footer-main">
+        <div>
+          <div class="display footer-logo">não<br/><span class="it">apego</span></div>
+          <p style="margin-top:20px;max-width:320px;font-size:13px;color:var(--mute);">
+            bazar de desapegos exclusivos · são paulo · brasil
+          </p>
+        </div>
+        <div class="footer-col">
+          <h4>bazar</h4>
+          <a href="#">novidades</a>
+          <a href="#">vestidos</a>
+          <a href="#">bolsas</a>
+          <a href="#">sapatos</a>
+          <a href="#">todas as peças</a>
+        </div>
+        <div class="footer-col">
+          <h4>informações</h4>
+          <a href="#" onclick="go('about');return false;">sobre</a>
+          <a href="#" onclick="go('how');return false;">como funciona</a>
+          <a href="#" onclick="go('events');return false;">lives</a>
+          <a href="#">enviar peças</a>
+        </div>
+        <div class="footer-col">
+          <h4>contato</h4>
+          <a href="#">@naoapegobazar</a>
+          <a href="#">whatsapp</a>
+          <a href="#">contato@naoapego.com.br</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© 2026 · NÃO APEGO BAZAR · SÃO PAULO · BRASIL</span>
+        <span>fundado por Lu Bittencourt</span>
+      </div>
+    </div>
+  </footer>
+
+</section>
+
+<!-- ============ SHOP ============ -->
+<section class="page" data-page="shop">
+  <div class="shop-head">
+    <div class="wrap">
+      <div class="shop-head-top">
+        <h1 class="display shop-title">o bazar<br/><span class="it">247 peças, agora</span></h1>
+        <div>
+          <div class="eyebrow" style="margin-bottom:8px;">como funcionam os drops</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;">
+              <span class="lote-badge l1">drop 01</span> preço cheio
+            </span>
+            <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;">
+              <span class="lote-badge l2">drop 02</span> −20%
+            </span>
+            <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;">
+              <span class="lote-badge l3">desapego final</span> −40%
+            </span>
+          </div>
+        </div>
+      </div>
+      <div class="shop-filters" id="filters"></div>
+    </div>
+    <div class="wrap">
+      <div class="shop-sort">
+        <span><span id="shop-count">247</span> peças · sem reserva · quem pagou, garante</span>
+        <select>
+          <option>ordenar: novidades</option>
+          <option>preço ↑</option>
+          <option>preço ↓</option>
+          <option>desconto maior</option>
+          <option>saindo em breve</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  <div class="grid-4" id="shop-grid" style="padding-top:30px;"></div>
+  <div style="padding:60px 0 100px;text-align:center;">
+    <button id="load-more-btn" class="hero-cta" style="display:none;border:none;cursor:pointer;">
+      <span>carregar mais peças</span>
+      <span class="arrow">↓</span>
+    </button>
+  </div>
+</section>
+
+<!-- ============ MANIFESTO ============ -->
+<section class="page" data-page="about">
+  <div class="manifesto">
+    <div class="wrap">
+      <div class="eyebrow" style="margin-bottom:20px;">manifesto · desde 2023</div>
+      <h1 class="display manifesto-title">
+        a roupa<br/>
+        <span class="it">não</span> é sua<br/>
+        <span class="it">—</span> é só sua<br/>
+        por enquanto.
+      </h1>
+      <div class="manifesto-body">
+        <aside class="manifesto-aside">
+          <div class="num">14</div>
+          <div class="cap">edições · 40+ influenciadoras · 3.800 peças circulando</div>
+        </aside>
+        <div>
+          <p class="lead">Não Apego nasceu de uma observação simples: as roupas mais bonitas do Brasil estão paradas em closets de quem já usou uma vez. Enquanto isso, tem gente procurando exatamente aquela peça.</p>
+          <p>A gente acha isso um desperdício — de roupa, de história, de prazer. Então criamos um bazar de desapegos: influenciadoras e modelos confiam suas peças pra gente, a gente fotografa, descreve, precifica com honestidade, e bota pra circular.</p>
+          <p>Tudo em estado impecável. Tudo com procedência. Tudo em edição limitada — quando acaba, acabou. Cada peça vem com o nome de quem usou antes, porque a história faz parte.</p>
+          <p>A gente não acredita em fast fashion. Acredita em roupa boa, que circula, que muda de dona, que continua vivendo. Acredita que a beleza não precisa de novidade — precisa de movimento.</p>
+          <p class="lead" style="color:var(--accent);">Compre menos. Desapegue mais. Viva com o que for bom.</p>
+          <p style="font-family:var(--f-serif);font-style:italic;font-size:16px;color:var(--mute);margin-top:40px;">— Lu Bittencourt, fundadora</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ COMO FUNCIONA ============ -->
+<section class="page" data-page="how">
+  <div class="shop-head">
+    <div class="wrap">
+      <div class="shop-head-top">
+        <h1 class="display shop-title">como<br/><span class="it">funciona</span></h1>
+        <div class="eyebrow">para compradoras · para quem desapega</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5 steps -->
+  <div class="how-5">
+    <div class="how-step">
+      <div>
+        <div class="how-num">01</div>
+        <h3>curadoria no closet</h3>
+        <p>A Lu e o time fazem uma curadoria diretamente no closet das influenciadoras e modelos parceiras. Só entram peças que a gente aprovaria usar amanhã.</p>
+      </div>
+    </div>
+    <div class="how-step">
+      <div>
+        <div class="how-num">02</div>
+        <h3>catálogo com desconto real</h3>
+        <p>As peças entram no catálogo no Lote 01 — já com um baita desconto em relação ao preço original. Fotografadas, medidas, descritas com honestidade.</p>
+      </div>
+    </div>
+    <div class="how-step">
+      <div>
+        <div class="how-num">03</div>
+        <h3>desconto progressivo</h3>
+        <p>As peças ganham desconto com o tempo. Após 1 mês entram em promoção (−20%). Após 2 meses, desapego final (−40%). Após 3 meses, saem do catálogo.</p>
+      </div>
+    </div>
+    <div class="how-step">
+      <div>
+        <div class="how-num">04</div>
+        <h3>quem chegou primeiro, levou</h3>
+        <p>Sem reserva. Sem lista de espera. Quem pediu e pagou, garantiu a peça. É assim que o bazar é justo pra todo mundo.</p>
+      </div>
+    </div>
+    <div class="how-step">
+      <div>
+        <div class="how-num">05</div>
+        <h3>pix ou cartão, brasil inteiro</h3>
+        <p>PIX ou cartão de crédito. Envio para todo o Brasil em até 3 dias úteis. Retirada em São Paulo também rola, sem frete.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lote visualizer -->
+  <section class="section" style="padding:70px 0 80px;">
+    <div class="wrap">
+      <div class="section-head" style="margin-bottom:40px;">
+        <h2 class="display section-title">como os <span class="it">descontos</span> funcionam</h2>
+      </div>
+      <div class="lote-viz">
+        <div class="lote-viz-row">
+          <div class="lote-viz-num">01</div>
+          <div class="lote-viz-info">
+            <h4>Drop 01 — novo no catálogo</h4>
+            <p>dias 1–30 · peça recém-chegada · preço de entrada já com desconto do varejo</p>
+          </div>
+          <div class="lote-viz-discount">preço<br/>de entrada</div>
+        </div>
+        <div class="lote-viz-row active">
+          <div class="lote-viz-num">02</div>
+          <div class="lote-viz-info">
+            <h4>Drop 02 — em promoção</h4>
+            <p>dias 31–60 · desconto progressivo · a peça ficou, o preço caiu</p>
+          </div>
+          <div class="lote-viz-discount hot">−20%</div>
+        </div>
+        <div class="lote-viz-row">
+          <div class="lote-viz-num">03</div>
+          <div class="lote-viz-info">
+            <h4>Desapego Final — desconto máximo</h4>
+            <p>dias 61–90 · última chance · maior desconto possível antes de sair do catálogo</p>
+          </div>
+          <div class="lote-viz-discount hotter">−40%</div>
+        </div>
+        <div class="lote-viz-row" style="background:color-mix(in srgb,var(--mute) 6%,transparent);">
+          <div class="lote-viz-num" style="color:var(--line);">—</div>
+          <div class="lote-viz-info">
+            <h4 style="color:var(--mute);">Saiu do catálogo</h4>
+            <p>após 90 dias · a peça retorna à influenciadora · volta pro closet ou busca novo destino</p>
+          </div>
+          <div class="lote-viz-discount" style="color:var(--mute);font-size:18px;">encerrado</div>
+        </div>
+      </div>
+
+      <!-- No reserva / pagamento -->
+      <div class="no-reserva" style="margin-top:40px;">
+        <div class="no-reserva-side">
+          <span class="badge badge-green">sem reserva</span>
+          <h4>quem pagou, garantiu</h4>
+          <p>Não temos fila, não temos reserva. A peça fica disponível para qualquer pessoa até alguém pagar. É justo, transparente, e a dinâmica que o bazar precisa para funcionar bem pra todo mundo.</p>
+        </div>
+        <div class="no-reserva-side">
+          <span class="badge badge-red">se não quiser perder</span>
+          <h4>ative a notificação de lote</h4>
+          <p>Cada peça tem um botão de notificação. A gente avisa você no WhatsApp quando ela mudar de lote — assim você decide se a hora chegou, sem precisar ficar monitorando.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- For sellers -->
+  <section class="section" style="background:var(--bg-2);padding:70px 0 80px;">
+    <div class="wrap">
+      <div class="eyebrow" style="margin-bottom:32px;">para quem quer desapegar</div>
+      <div class="how-5" style="background:var(--bg);border-radius:16px;border:1px solid var(--line);overflow:hidden;">
+        <div class="how-step">
+          <div>
+            <div class="how-num">01</div>
+            <h3>seleciona</h3>
+            <p>Separa as peças que pararam de fazer sentido no seu closet. A gente avalia por foto, no WhatsApp.</p>
+          </div>
+        </div>
+        <div class="how-step">
+          <div>
+            <div class="how-num">02</div>
+            <h3>curadoria juntas</h3>
+            <p>Fotografamos, descrevemos e precificamos com você. Nada entra sem a sua aprovação.</p>
+          </div>
+        </div>
+        <div class="how-step">
+          <div>
+            <div class="how-num">03</div>
+            <h3>entra no bazar</h3>
+            <p>Coleta em São Paulo ou envio com nossa logística. A peça fica disponível para as compradoras.</p>
+          </div>
+        </div>
+        <div class="how-step" style="border-right:0;grid-column:span 2;">
+          <div>
+            <div class="how-num">04</div>
+            <h3>recebe — split justo</h3>
+            <p>60% para você, 40% para a gente rodar o bazar. Pago em PIX assim que a peça circula. Transparente do início ao fim.</p>
+          </div>
+        </div>
+      </div>
+      <!-- Open / Closed Closet -->
+      <div style="margin-top:48px;">
+        <div class="eyebrow" style="margin-bottom:20px;">dois modos de participar</div>
+        <div class="no-reserva" style="margin-top:0;">
+          <div class="no-reserva-side">
+            <span class="badge badge-green">open closet</span>
+            <h4>seu nome nas peças</h4>
+            <p>Suas peças aparecem com o seu perfil no catálogo. As compradoras sabem de quem vieram — isso valoriza a peça e cria uma conexão real com quem acompanha você.</p>
+          </div>
+          <div class="no-reserva-side">
+            <span class="badge" style="background:color-mix(in srgb,var(--ink) 8%,transparent);color:var(--ink-2);">closed closet</span>
+            <h4>participação anônima</h4>
+            <p>Suas peças circulam sem identificação. Nem marcas, nem público ficam sabendo — só você, a Lu e quem comprou. Total discrição, sem abrir mão de ganhar com o desapego.</p>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:32px;text-align:center;">
+        <a href="#" class="hero-cta" style="display:inline-flex;">
+          <span>quero desapegar →</span>
+        </a>
+      </div>
+    </div>
+  </section>
+</section>
+
+<!-- ============ LIVES & COMUNIDADE ============ -->
+<section class="page" data-page="events">
+  <div class="shop-head">
+    <div class="wrap">
+      <div class="shop-head-top">
+        <h1 class="display shop-title">lives &<br/><span class="it">comunidade</span></h1>
+        <div class="eyebrow">instagram · youtube · toda quinta</div>
+      </div>
+      <p style="max-width:540px;font-size:17px;color:var(--ink-2);margin-top:24px;margin-bottom:0;">
+        Toda semana a Lu e as amigas vão ao vivo pra falar de moda, styling, como usar as peças do bazar, novidades e um pouquinho de tudo. Vem junto.
+      </p>
+    </div>
+  </div>
+
+  <div class="wrap" style="padding-top:48px;">
+
+    <!-- Próximas lives -->
+    <div class="eyebrow" style="margin-bottom:24px;">próximas lives</div>
+
+    <div class="live-card">
+      <div>
+        <div class="live-day">15</div>
+        <div class="live-month">maio · qui</div>
+      </div>
+      <div>
+        <span class="live-status agendada">agendada</span>
+        <h3>como montar looks com as peças do bazar</h3>
+        <div class="host">com Lu Bittencourt · @naoapegobazar</div>
+        <div class="topic">Styling ao vivo: pega as peças do catálogo e mostra combinações que você talvez não tenha pensado. Tira dúvidas de medida em tempo real.</div>
+      </div>
+      <a href="#" class="live-cta-btn">ativar lembrete →</a>
+    </div>
+
+    <div class="live-card">
+      <div>
+        <div class="live-day">22</div>
+        <div class="live-month">maio · qui</div>
+      </div>
+      <div>
+        <span class="live-status agendada">agendada</span>
+        <h3>drop ao vivo — nova coleção cápsula</h3>
+        <div class="host">com Lu Bittencourt + convidadas</div>
+        <div class="topic">Lançamento ao vivo de uma nova coleção. Quem estiver na live tem acesso 30 minutos antes do catálogo público. Grupo VIP tem acesso 24h antes.</div>
+      </div>
+      <a href="#" class="live-cta-btn">ativar lembrete →</a>
+    </div>
+
+    <div class="live-card">
+      <div>
+        <div class="live-day">05</div>
+        <div class="live-month">jun · qui</div>
+      </div>
+      <div>
+        <span class="live-status agendada">agendada</span>
+        <h3>armário cápsula: o que realmente vale guardar</h3>
+        <div class="host">com Lu Bittencourt</div>
+        <div class="topic">Uma conversa honesta sobre consumo consciente, desapego, e por que o menos pode ser mais quando a peça é boa.</div>
+      </div>
+      <a href="#" class="live-cta-btn">ativar lembrete →</a>
+    </div>
+
+    <!-- Lives passadas -->
+    <div class="eyebrow" style="margin-top:64px;margin-bottom:24px;">lives passadas</div>
+
+    <div class="live-card">
+      <div>
+        <div class="live-day" style="font-size:36px;color:var(--mute);">08</div>
+        <div class="live-month">mai · qui</div>
+      </div>
+      <div>
+        <span class="live-status passada">encerrada</span>
+        <h3 style="color:var(--mute);">como lavar roupas delicadas sem estragar</h3>
+        <div class="host">com Lu Bittencourt · 1.240 espectadoras</div>
+      </div>
+      <a href="#" class="live-cta-btn past">ver gravação</a>
+    </div>
+
+    <div class="live-card">
+      <div>
+        <div class="live-day" style="font-size:36px;color:var(--mute);">01</div>
+        <div class="live-month">mai · qui</div>
+      </div>
+      <div>
+        <span class="live-status passada">encerrada</span>
+        <h3 style="color:var(--mute);">trend code: o que está em alta no closet das influencers</h3>
+        <div class="host">com Lu Bittencourt · 2.180 espectadoras</div>
+      </div>
+      <a href="#" class="live-cta-btn past">ver gravação</a>
+    </div>
+
+  </div>
+
+  <!-- VIP na página de lives também -->
+  <section class="vip-block" style="margin-top:80px;">
+    <div>
+      <div class="eyebrow" style="color:var(--accent-2);margin-bottom:20px;">comunidade vip</div>
+      <h2>você<br/><span class="it">sabe</span><br/>antes.</h2>
+    </div>
+    <div>
+      <p>Entre no grupo VIP e receba: avisos de live 24h antes, acesso antecipado às coleções, notificação de mudança de lote nas peças que você quer.</p>
+      <div class="vip-benefits">
+        <div class="vip-benefit">acesso 24h antes de cada nova coleção</div>
+        <div class="vip-benefit">notificação de mudança de drop</div>
+        <div class="vip-benefit">convites antecipados para as lives</div>
+        <div class="vip-benefit">canal direto com a Lu</div>
+      </div>
+      <a class="vip-pill" href="#">entrar no grupo vip →</a>
+    </div>
+  </section>
+
+  <div style="height:80px;"></div>
+</section>
+
+</main>
+
+<!-- ============ Notify modal ============ -->
+<div class="modal-overlay" id="notify-modal" onclick="closeModal(event)">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeNotifyModal()">×</button>
+    <h3>avise-me quando mudar de drop</h3>
+    <div class="modal-piece-name" id="modal-piece-name"></div>
+    <p id="modal-piece-desc">Você recebe uma mensagem no WhatsApp assim que essa peça entrar em promoção ou desapego final.</p>
+    <input class="modal-input" type="tel" placeholder="seu whatsapp (ex: 11999999999)" id="modal-phone" />
+    <button class="modal-submit" onclick="submitNotify()">ativar notificação</button>
+    <div class="modal-or">ou</div>
+    <button class="modal-wa-btn" onclick="openWaNotify()">
+      <span>💬</span> avisar pelo whatsapp agora
+    </button>
   </div>
 </div>
 
-<div class="count-bar" id="countBar"></div>
-<div class="grid" id="grid"></div>
-<div class="more-wrap" id="moreWrap" style="display:none">
-  <button class="btn-more" id="moreBtn">ver mais</button>
+<!-- ============ Tweaks ============ -->
+<div class="tweaks" id="tweaks">
+  <button class="tweaks-close" onclick="closeTweaks()">×</button>
+  <h5>Tweaks</h5>
+  <h5>Paleta</h5>
+  <div class="tweaks-row" data-tw="palette">
+    <button class="tw-opt is-on" data-val="quiet">Quiet</button>
+    <button class="tw-opt" data-val="tropical">Tropical</button>
+    <button class="tw-opt" data-val="ink">Ink</button>
+  </div>
+  <h5>Tipografia</h5>
+  <div class="tweaks-row" data-tw="type">
+    <button class="tw-opt is-on" data-val="editorial">Editorial</button>
+    <button class="tw-opt" data-val="modern">Modern</button>
+    <button class="tw-opt" data-val="classic">Classic</button>
+  </div>
+  <h5>Idioma</h5>
+  <div class="tweaks-row" data-tw="lang">
+    <button class="tw-opt is-on" data-val="pt">PT</button>
+    <button class="tw-opt" data-val="en">EN</button>
+  </div>
 </div>
 
 <script>
-// ─── CONFIGURAÇÃO ──────────────────────────────────────────────────────────
+/* ============ CONFIG ============ */
 const CONFIG = {
-  // 1. Publique a aba ESTOQUE do Google Sheets como CSV e cole a URL aqui
-  //    Sheets → Arquivo → Compartilhar → Publicar na web → Aba: Estoque → CSV
-  csvUrl: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTOzoKrPmyC0PJdAgViWTvZFotooklF89mciD2e-aVuCk1lMyw_SiTKjMAFfqpOBF3H2BiOBkHabq0l/pub?output=csv',
-
-  // 2. Número do WhatsApp do não apego (só dígitos, DDI 55 incluso)
-  //    Ex: '5511987654321'
-  whatsappNumber: 'NUMERO_DO_WHATSAPP',
-
-  // Cards por página
-  pageSize: 24,
-
-  // Status que ocultam a peça do catálogo
-  hiddenStatus: ['Pago', 'pago', 'Cancelado', 'cancelado'],
-
-  // Status que mostram badge "reservado" mas não ocultam
-  reservedStatus: ['Reservado', 'reservado'],
-
-  // Nomes exatos das colunas na planilha
-  col: {
-    id:          'Código',
-    description: 'Descritivo Peça',
-    brand:       'Marca',
-    size:        'Tamanho',
-    color:       'Cor',
-    condition:   'Condição',
-    price:       'Preço Total',
-    status:      'Status',
-    photo:       'Foto',   // nova coluna: URL de compartilhamento do Google Drive
-  }
+  // URL base de publicação da planilha (File > Share > Publish to web > CSV)
+  csvUrl: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTOzoKrPmyC0PJdAgViWTvZFotooklF89mciD2e-aVuCk1lMyw_SiTKjMAFfqpOBF3H2BiOBkHabq0l/pub?gid=1253613754&single=true&output=csv',
+  whatsappNumber: 'NUMERO_DO_WHATSAPP', // trocar quando o chip chegar
+  whatsappGroupLink: '#',               // link do grupo VIP — adicionar depois
 };
-// ──────────────────────────────────────────────────────────────────────────
 
-let allItems = [];
-let filtered = [];
-let page = 1;
-let activeSize = '';
-let searchTerm = '';
+/* ============ Data helpers ============ */
+let PIECES = [];
 
-// Extrai URL de imagem de um link do Google Drive
-function photoUrl(raw) {
-  if (!raw) return null;
-  raw = raw.trim();
-  // URL direta (não-Drive)
-  if (raw.startsWith('http') && !raw.includes('drive.google')) return raw;
-  // Extrai file ID de qualquer formato de link do Drive
-  const m = raw.match(/[-\w]{25,}/);
+function parseEntryDate(str) {
+  if (!str) return null;
+  const mm = {jan:0,fev:1,mar:2,abr:3,mai:4,jun:5,jul:6,ago:7,set:8,out:9,nov:10,dez:11};
+  const m = String(str).toLowerCase().match(/(\d+)[^\d]+([a-z]+)[^\d]+(\d+)/);
   if (!m) return null;
-  return `https://drive.google.com/thumbnail?id=${m[0]}&sz=w600`;
+  const mon = mm[m[2].replace(/\./g,'')];
+  return (mon !== undefined) ? new Date(2000+parseInt(m[3]), mon, parseInt(m[1])) : null;
 }
-
-function formatPrice(raw) {
-  const n = parseFloat(String(raw).replace(/[R$\s"]/g, '').replace(',', '.'));
-  if (isNaN(n)) return raw || '';
-  return 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 0 });
+function daysSince(str) {
+  const d = parseEntryDate(str);
+  return d ? Math.max(0, Math.floor((Date.now()-d.getTime())/86400000)) : 0;
 }
-
-// Normaliza tamanhos para os chips de filtro
-function normalizeSize(raw) {
-  if (!raw) return '';
-  const s = String(raw).trim().toUpperCase().replace(/\s/g, '');
-  const num = parseFloat(s);
-  if (!isNaN(num)) {
-    if (num <= 36) return 'PP';
-    if (num === 38) return 'P';
-    if (num === 40) return 'M';
-    if (num === 42) return 'G';
-    if (num >= 44) return 'GG';
-  }
-  const map = { PP:'PP', P:'P', M:'M', G:'G', GG:'GG',
-                XS:'PP', S:'P', L:'G', XL:'GG', XXL:'GG',
-                'ÚNICO':'U', UNICO:'U', U:'U', 'TAM.ÚNICO':'U' };
-  return map[s] || s;
+function driveThumb(raw) {
+  if (!raw || !raw.trim()) return null;
+  const s = raw.trim();
+  if (s.startsWith('http') && !s.includes('drive.google')) return s;
+  const m = s.match(/[-\w]{25,}/);
+  return m ? 'https://drive.google.com/thumbnail?id='+m[0]+'&sz=w800' : null;
 }
-
-function waLink(item) {
-  const msg = `Olá! Tenho interesse na peça ${item.id} — ${item.brand} ${item.description} (${item.size}) — ${formatPrice(item.price)}`;
-  return `https://wa.me/${CONFIG.whatsappNumber}?text=${encodeURIComponent(msg)}`;
+function fmtPrice(raw) {
+  const n = parseFloat(String(raw).replace(/[R$\s"]/g,'').replace(',','.'));
+  return isNaN(n) ? (raw||'') : 'R$ '+n.toLocaleString('pt-BR',{minimumFractionDigits:0});
 }
-
-function renderCard(item) {
-  const img = photoUrl(item.photo);
-  const reserved = CONFIG.reservedStatus.includes(item.status);
-
-  return `<div class="card">
-    <div class="card-photo">
-      ${img
-        ? `<img src="${img}" alt="${item.description}" loading="lazy"
-             onerror="this.outerHTML='<div class=\\"placeholder\\">👗</div>'">`
-        : `<div class="placeholder">👗</div>`}
-      ${reserved ? `<span class="badge-reservado">reservado</span>` : ''}
-    </div>
-    <div class="card-body">
-      <div class="card-brand">${item.brand || '—'}</div>
-      <div class="card-desc">${item.description || ''}</div>
-      <div class="card-tags">
-        ${item.size      ? `<span class="tag">${item.size}</span>` : ''}
-        ${item.color     ? `<span class="tag">${item.color}</span>` : ''}
-        ${item.condition ? `<span class="tag">${item.condition}</span>` : ''}
-      </div>
-      <div class="card-footer">
-        <span class="price">${formatPrice(item.price)}</span>
-        ${!reserved
-          ? `<a class="btn-wha" href="${waLink(item)}" target="_blank" rel="noopener">
-               💬 quero
-             </a>`
-          : ''}
-      </div>
-    </div>
-  </div>`;
-}
-
-function applyFilters() {
-  filtered = allItems.filter(item => {
-    if (activeSize && normalizeSize(item.size) !== activeSize) return false;
-    if (searchTerm) {
-      const hay = [item.brand, item.description, item.color, item.id]
-        .join(' ').toLowerCase();
-      if (!hay.includes(searchTerm)) return false;
-    }
-    return true;
-  });
-  page = 1;
-  render();
-}
-
-function render() {
-  const grid     = document.getElementById('grid');
-  const countBar = document.getElementById('countBar');
-  const moreWrap = document.getElementById('moreWrap');
-
-  const slice = filtered.slice(0, page * CONFIG.pageSize);
-
-  if (!filtered.length) {
-    grid.innerHTML = `<div class="msg">nenhuma peça encontrada</div>`;
-    countBar.textContent = '';
-    moreWrap.style.display = 'none';
-    return;
-  }
-
-  grid.innerHTML = slice.map(renderCard).join('');
-  countBar.textContent =
-    `${filtered.length} peça${filtered.length !== 1 ? 's' : ''} disponível${filtered.length !== 1 ? 'is' : ''}`;
-  moreWrap.style.display = filtered.length > slice.length ? 'block' : 'none';
+function abbrev(name) {
+  const p = String(name||'').trim().split(/\s+/);
+  return p.length<=1 ? p[0] : p[0]+' '+p[p.length-1][0]+'.';
 }
 
 async function loadData() {
-  document.getElementById('grid').innerHTML = `<div class="msg">carregando…</div>`;
-
-  if (CONFIG.csvUrl === 'COLE_AQUI_A_URL_DO_CSV') {
-    document.getElementById('grid').innerHTML =
-      `<div class="msg">⚙️ Configure <strong>CONFIG.csvUrl</strong> no index.html<br>
-       (Sheets → Arquivo → Compartilhar → Publicar na web → CSV)</div>`;
-    return;
-  }
-
-  Papa.parse(CONFIG.csvUrl, {
-    download: true,
-    header: true,
-    skipEmptyLines: true,
-    transformHeader: h => h.trim(),
-    transform: v => v.trim(),
-    complete({ data }) {
-      const c = CONFIG.col;
-      allItems = data
-        .filter(row => {
-          const st = (row[c.status] || '').trim();
-          return !CONFIG.hiddenStatus.includes(st);
-        })
-        .map(row => ({
-          id:          (row[c.id]          || '').trim(),
-          description: (row[c.description] || '').trim(),
-          brand:       (row[c.brand]       || '').trim(),
-          size:        (row[c.size]        || '').trim(),
-          color:       (row[c.color]       || '').trim(),
-          condition:   (row[c.condition]   || '').trim(),
-          price:       (row[c.price]       || '').trim(),
-          status:      (row[c.status]      || '').trim(),
-          photo:       (row[c.photo]       || '').trim(),
-        }));
-      filtered = allItems;
-      render();
-    },
-    error(err) {
-      document.getElementById('grid').innerHTML =
-        `<div class="msg">Erro ao carregar peças.<br>Verifique se a planilha está publicada.</div>`;
-      console.error(err);
-    }
+  return new Promise((resolve, reject) => {
+    Papa.parse(CONFIG.csvUrl, {
+      download: true, header: true, skipEmptyLines: true,
+      transformHeader: h => h.trim(), transform: v => v.trim(),
+      complete({ data }) {
+        const hidden = ['Pago','Cancelado','Devolvido'];
+        PIECES = data
+          .filter(r => (r['Código']||'').trim() && (r['Status']||'').trim() && !hidden.includes(r['Status']||''))
+          .map(r => ({
+            id:    r['Código']||'',
+            brand: r['Marca']||'',
+            name:  r['Descritivo Peça']||'',
+            size:  r['Tamanho']||'',
+            color: r['Cor']||'',
+            price:     fmtPrice(r['Preço Atual']||r['Preço Total']||''),
+            origPrice: fmtPrice(r['Preço Original']||''),
+            infl:      r['Closet']==='anônimo' ? 'anônimo' : abbrev(r['Closet']||''),
+            closetType: r['Tipo Closet']||'Open',
+            days:  daysSince(r['Data Entrada']),
+            photo: driveThumb(r['Foto']||''),
+            tag:   daysSince(r['Data Entrada'])<=14 ? 'new' : null,
+            pal:   PALETTES[Math.abs(hash(r['Código']||r['Descritivo Peça']||''))%PALETTES.length],
+          }));
+        resolve();
+      },
+      error: reject,
+    });
   });
 }
 
-// Eventos
-document.getElementById('filters').addEventListener('click', e => {
-  const chip = e.target.closest('.chip');
-  if (!chip) return;
-  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-  chip.classList.add('active');
-  activeSize = chip.dataset.size;
-  applyFilters();
+const PALETTES = [
+  ['#C8AAA0','#8E6854'],['#2A2A28','#4A4A45'],['#3E3A33','#6B6154'],
+  ['#E8C5B5','#B8786A'],['#EFE8D8','#C8BFA8'],['#A4523C','#763520'],
+  ['#1C1917','#3E332E'],['#1A1513','#3B2D24'],['#D9A441','#8B6418'],
+  ['#718CA1','#3E5368'],['#C23B22','#6B1E0F'],['#F0E0C0','#BFA478'],
+];
+
+function updateCounts() {
+  const n = PIECES.length;
+  document.querySelectorAll('.tick-live').forEach(el => el.textContent = n+' peças disponíveis agora');
+  document.querySelectorAll('#shop-count').forEach(el => el.textContent = n);
+  document.querySelectorAll('.section-link').forEach(el => { if(el.textContent.includes('ver catálogo')) el.textContent = 'ver catálogo completo ('+n+') →'; });
+  const shopIt = document.querySelector('.shop-title .it');
+  if (shopIt) shopIt.textContent = n+' peças, agora';
+}
+
+/* ============ Lote logic ============ */
+function getLote(days) {
+  if (days <= 30) {
+    const pct = Math.round(days / 30 * 100);
+    return { n:1, cls:'l1', label:'drop 01 · novo', discount:0, pct, daysLeft:30-days };
+  }
+  if (days <= 60) {
+    const pct = Math.round((days-30)/30*100);
+    return { n:2, cls:'l2', label:'drop 02 · promoção', discount:20, pct, daysLeft:60-days };
+  }
+  const pct = Math.round((days-60)/30*100);
+  return { n:3, cls:'l3', label:'desapego final', discount:40, pct, daysLeft:90-days };
+}
+
+function applyDiscount(priceStr, pct) {
+  if (!pct) return priceStr;
+  const num = parseInt(priceStr.replace(/\D/g,''));
+  const d = Math.round(num * (1 - pct/100) / 10) * 10;
+  return 'R$ ' + d.toLocaleString('pt-BR');
+}
+
+/* ============ Products (populated from CSV) ============ */
+
+function hash(s){let h=0;for(let i=0;i<s.length;i++)h=(h<<5)-h+s.charCodeAt(i);return h;}
+
+function productSVG(p) {
+  const [c1,c2]=p.pal;
+  const vs=[
+    `<rect width="400" height="560" fill="${c1}"/><path d="M160 120 L180 100 L220 100 L240 120 L260 220 L290 520 L110 520 L140 220 Z" fill="${c2}" opacity="0.9"/><circle cx="200" cy="100" r="22" fill="${c2}" opacity="0.7"/>`,
+    `<rect width="400" height="560" fill="${c1}"/><path d="M120 140 L200 110 L280 140 L300 460 L220 480 L200 300 L180 480 L100 460 Z" fill="${c2}" opacity="0.92"/><line x1="200" y1="140" x2="200" y2="460" stroke="${c1}" stroke-width="2"/>`,
+    `<rect width="400" height="560" fill="${c1}"/><path d="M120 240 Q120 180 200 180 Q280 180 280 240 L280 260 L120 260 Z" fill="none" stroke="${c2}" stroke-width="6"/><rect x="110" y="250" width="180" height="220" rx="8" fill="${c2}" opacity="0.92"/><rect x="180" y="330" width="40" height="20" rx="2" fill="${c1}"/>`,
+    `<rect width="400" height="560" fill="${c1}"/><path d="M140 180 L180 150 L220 150 L260 180 L290 300 L110 300 Z" fill="${c2}" opacity="0.9"/>`,
+    `<rect width="400" height="560" fill="${c1}"/><path d="M140 180 L260 180 L275 220 L240 500 L210 500 L200 300 L190 500 L160 500 L125 220 Z" fill="${c2}" opacity="0.9"/>`,
+    `<rect width="400" height="560" fill="${c1}"/><path d="M80 360 Q80 300 160 280 L280 260 Q340 260 340 320 Q340 360 300 370 L100 380 Q80 380 80 360 Z" fill="${c2}" opacity="0.92"/><path d="M280 260 L310 200" stroke="${c2}" stroke-width="10" stroke-linecap="round"/>`,
+    `<rect width="400" height="560" fill="${c1}"/><rect x="80" y="160" width="240" height="240" fill="${c2}" opacity="0.9" transform="rotate(15 200 280)"/><rect x="120" y="200" width="160" height="160" fill="${c1}" opacity="0.4" transform="rotate(15 200 280)"/>`,
+    `<rect width="400" height="560" fill="${c1}"/><path d="M170 110 L230 110 L250 200 L290 540 L110 540 L150 200 Z" fill="${c2}" opacity="0.9"/><circle cx="200" cy="95" r="18" fill="${c2}" opacity="0.7"/>`,
+  ];
+  return `<svg viewBox="0 0 400 560" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">${vs[Math.abs(hash(p.name))%vs.length]}</svg>`;
+}
+
+function productTile(p) {
+  const lote = getLote(p.days);
+  // Se vier do CATALOGO, Preço Atual já é o preço aprovado — não reaplicar desconto
+  const hasOriginal = p.origPrice && p.origPrice !== p.price;
+  const displayPrice = p.origPrice ? p.price : applyDiscount(p.price, lote.discount);
+  const baseForOrig  = p.origPrice ? p.origPrice : p.price;
+  const showOrig     = hasOriginal || (!p.origPrice && lote.discount > 0);
+  const origTag      = showOrig ? `<span class="price-original">${hasOriginal ? baseForOrig : p.price}</span>` : '';
+  const tagMap = { new:'novo', hot:'quase esgotado' };
+  const tagHtml = p.tag ? `<span class="tag ${p.tag}">${tagMap[p.tag]}</span>` : '';
+  const daysMsg = lote.daysLeft <= 3
+    ? `<span style="color:var(--accent);font-weight:600;">${lote.daysLeft}d restantes!</span>`
+    : `${lote.daysLeft}d até ${lote.n===1?'drop 02':lote.n===2?'desapego final':'sair'}`;
+  const waMsg = encodeURIComponent(`Olá! Tenho interesse na peça ${p.id} — ${p.brand} ${p.name} (${p.size}) — ${displayPrice}`);
+  const waHref = `https://wa.me/${CONFIG.whatsappNumber}?text=${waMsg}`;
+  return `
+    <article class="product">
+      <div class="product-image">
+        ${p.photo ? `<img src="${p.photo}" alt="${p.name}" loading="lazy" onerror="this.style.display='none'">` : ''}
+        ${productSVG(p)}
+        ${tagHtml}
+        <div class="product-overlay">
+          <a class="product-wa" href="${waHref}" target="_blank" rel="noopener" onclick="event.stopPropagation();">
+            💬 comprar no whatsapp
+          </a>
+        </div>
+      </div>
+      <div class="product-info">
+        <span class="product-brand">${p.brand}</span>
+        <div class="product-name">
+          <span>${p.name}</span>
+          <span class="price">${origTag}${displayPrice}</span>
+        </div>
+        <div class="product-meta">
+          <span>${p.size}</span>
+          <span>·</span>
+          ${p.infl === 'anônimo'
+            ? `<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;padding:2px 7px;border-radius:100px;background:color-mix(in srgb,var(--ink) 8%,transparent);letter-spacing:0.08em;text-transform:uppercase;font-weight:600;">closed closet</span>`
+            : `<span>desapego de ${p.infl}</span>`
+          }
+        </div>
+        <div class="lote-row">
+          <span class="lote-badge ${lote.cls}">${lote.label}</span>
+          <span class="lote-days">${daysMsg}</span>
+        </div>
+        <div class="lote-track">
+          <div class="lote-fill ${lote.cls}" style="width:${lote.pct}%"></div>
+        </div>
+        <div class="product-actions">
+          <a class="wa-card-btn" href="${waHref}" target="_blank" rel="noopener" onclick="event.stopPropagation();">
+            <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+            comprar
+          </a>
+          <button class="notify-btn" onclick="openNotifyModal('${p.name.replace(/'/g,"\\'")}', ${lote.n})">
+            <span class="notify-bell">🔔</span> avisar
+          </button>
+        </div>
+      </div>
+    </article>`;
+}
+
+function renderFeatured() {
+  document.getElementById('featured-grid').innerHTML = PIECES.slice(0,4).map(productTile).join('');
+}
+function renderShop() { applyFiltersAndRender(); }
+
+/* ============ Influencers (from real data) ============ */
+function renderInfluencers() {
+  const counts = {};
+  PIECES.forEach(p => { if(p.infl) counts[p.infl] = (counts[p.infl]||0)+1; });
+  const top = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,8)
+    .map(([name,n]) => ({name, count:n+(n===1?' peça':' peças'), letters:name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2)}));
+  if (!top.length) return;
+  document.getElementById('influencers').innerHTML = top.map(i=>`
+    <div class="influ">
+      <div class="influ-img">${i.letters}</div>
+      <span class="influ-name">${i.name}</span>
+      <span class="influ-count">${i.count}</span>
+    </div>`).join('');
+}
+
+/* ============ Split image ============ */
+function renderSplitImage() {
+  document.getElementById('split-img').innerHTML = `
+    <svg viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+      <defs><linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="var(--bg-2)"/>
+        <stop offset="1" stop-color="var(--line)"/>
+      </linearGradient></defs>
+      <rect width="500" height="500" fill="url(#g1)"/>
+      <line x1="50" y1="80" x2="450" y2="80" stroke="var(--ink)" stroke-width="2"/>
+      <path d="M100 70 L95 85 L105 85 Z" fill="var(--ink)"/>
+      <path d="M110 80 Q110 110 140 120 L140 380 L80 380 L80 120 Q110 110 110 80" fill="var(--accent)" opacity="0.85"/>
+      <path d="M200 70 L195 85 L205 85 Z" fill="var(--ink)"/>
+      <path d="M210 80 Q210 110 240 120 L240 400 L180 400 L180 120 Q210 110 210 80" fill="var(--ink)" opacity="0.88"/>
+      <path d="M300 70 L295 85 L305 85 Z" fill="var(--ink)"/>
+      <path d="M310 80 Q310 110 340 120 L340 360 L280 360 L280 120 Q310 110 310 80" fill="var(--mute)" opacity="0.75"/>
+      <path d="M400 70 L395 85 L405 85 Z" fill="var(--ink)"/>
+      <path d="M410 80 Q410 110 440 120 L440 390 L380 390 L380 120 Q410 110 410 80" fill="var(--accent-2)" opacity="0.8"/>
+      <text x="30" y="470" font-family="Fraunces,Georgia,serif" font-style="italic" font-size="20" fill="var(--ink)" opacity="0.7">closet das influenciadoras · direto pra você</text>
+    </svg>`;
+}
+
+/* ============ Marquee ============ */
+function renderMarquee() {
+  const items = ['peças únicas','desconto progressivo','quem chegou primeiro levou','sem reserva','direto do closet','estado impecável','bazar brasileiro','desde 2023','drops em aberto'];
+  const doubled = [...items,...items,...items,...items];
+  document.getElementById('marquee-track').innerHTML = doubled.map(t=>`<span>${t}</span>`).join('');
+}
+
+/* ============ Filter state + logic ============ */
+const filterState = { size:'', lote:0, brand:'', sort:'new' };
+
+function parsePrice(s) {
+  return parseFloat(String(s).replace(/[R$\s.]/g,'').replace(',','.')) || 0;
+}
+function normalizeSize(raw) {
+  const s = String(raw||'').trim().toUpperCase().replace(/\s/g,'');
+  const n = parseFloat(s);
+  if(!isNaN(n)){if(n<=36)return'PP';if(n===38)return'P';if(n===40)return'M';if(n===42)return'G';if(n>=44)return'GG';}
+  return {PP:'PP',P:'P',M:'M',G:'G',GG:'GG',XS:'PP',S:'P',L:'G',XL:'GG',ÚNICO:'U',UNICO:'U',U:'U'}[s]||s;
+}
+
+const PAGE_SIZE = 24;
+let _filteredList = [];
+let _currentPage = 1;
+
+function applyFiltersAndRender() {
+  _currentPage = 1;
+  let list = PIECES.slice();
+  if (filterState.size)  list = list.filter(p => normalizeSize(p.size) === filterState.size);
+  if (filterState.lote)  list = list.filter(p => getLote(p.days).n === filterState.lote);
+  if (filterState.brand) list = list.filter(p => p.brand.toLowerCase() === filterState.brand.toLowerCase());
+  switch(filterState.sort){
+    case 'price-asc':  list.sort((a,b)=>parsePrice(a.price)-parsePrice(b.price)); break;
+    case 'price-desc': list.sort((a,b)=>parsePrice(b.price)-parsePrice(a.price)); break;
+    case 'discount':   list.sort((a,b)=>b.days-a.days); break;
+    case 'ending':     list.sort((a,b)=>(90-a.days%90)-(90-b.days%90)); break;
+    default:           list.sort((a,b)=>a.days-b.days);
+  }
+  _filteredList = list;
+  const grid = document.getElementById('shop-grid');
+  grid.innerHTML = list.length
+    ? list.slice(0, PAGE_SIZE).map(productTile).join('')
+    : '<div style="grid-column:1/-1;padding:60px;text-align:center;color:var(--mute)">nenhuma peça encontrada</div>';
+  document.getElementById('shop-count').textContent = list.length;
+  _updateLoadMoreBtn();
+}
+
+function _updateLoadMoreBtn() {
+  const btn = document.getElementById('load-more-btn');
+  if (!btn) return;
+  btn.style.display = _currentPage * PAGE_SIZE < _filteredList.length ? 'inline-flex' : 'none';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.getElementById('load-more-btn');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    _currentPage++;
+    const start = (_currentPage - 1) * PAGE_SIZE;
+    const extra = _filteredList.slice(start, start + PAGE_SIZE).map(productTile).join('');
+    document.getElementById('shop-grid').insertAdjacentHTML('beforeend', extra);
+    _updateLoadMoreBtn();
+  });
 });
 
-document.getElementById('search').addEventListener('input', e => {
-  searchTerm = e.target.value.trim().toLowerCase();
-  applyFilters();
+function renderFilters() {
+  const brandCounts = {};
+  PIECES.forEach(p=>{ if(p.brand) brandCounts[p.brand]=(brandCounts[p.brand]||0)+1; });
+  const topBrands = Object.entries(brandCounts).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([b])=>b);
+  const lc = [0,1,2,3].map(n=>n===0?PIECES.length:PIECES.filter(p=>getLote(p.days).n===n).length);
+  const sizes = ['PP','P','M','G','GG'];
+
+  document.getElementById('filters').innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:10px;width:100%;">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+        <span class="eyebrow" style="margin-right:6px;">tamanho</span>
+        <button class="filter-chip size-chip is-on" data-size="">todos</button>
+        ${sizes.map(s=>`<button class="filter-chip size-chip" data-size="${s}">${s}</button>`).join('')}
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+        <span class="eyebrow" style="margin-right:6px;">drop</span>
+        <button class="filter-chip lote-chip is-on" data-lote="0">todos (${lc[0]})</button>
+        <button class="filter-chip lote-chip" data-lote="1">drop 01 · preço cheio (${lc[1]})</button>
+        <button class="filter-chip lote-chip" data-lote="2">drop 02 · −20% (${lc[2]})</button>
+        <button class="filter-chip lote-chip" data-lote="3">desapego final · −40% (${lc[3]})</button>
+      </div>
+      ${topBrands.length?`
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+        <span class="eyebrow" style="margin-right:6px;">marca</span>
+        <button class="filter-chip brand-chip is-on" data-brand="">todas</button>
+        ${topBrands.map(b=>`<button class="filter-chip brand-chip" data-brand="${b}">${b}</button>`).join('')}
+      </div>`:''}
+    </div>`;
+
+  document.querySelectorAll('.size-chip').forEach(btn=>btn.addEventListener('click',()=>{
+    document.querySelectorAll('.size-chip').forEach(b=>b.classList.remove('is-on'));
+    btn.classList.add('is-on'); filterState.size=btn.dataset.size; applyFiltersAndRender();
+  }));
+  document.querySelectorAll('.lote-chip').forEach(btn=>btn.addEventListener('click',()=>{
+    document.querySelectorAll('.lote-chip').forEach(b=>b.classList.remove('is-on'));
+    btn.classList.add('is-on'); filterState.lote=parseInt(btn.dataset.lote); applyFiltersAndRender();
+  }));
+  document.querySelectorAll('.brand-chip').forEach(btn=>btn.addEventListener('click',()=>{
+    document.querySelectorAll('.brand-chip').forEach(b=>b.classList.remove('is-on'));
+    btn.classList.add('is-on'); filterState.brand=btn.dataset.brand; applyFiltersAndRender();
+  }));
+
+  // Sort select
+  document.querySelector('.shop-sort select')?.addEventListener('change', e=>{
+    filterState.sort=['new','price-asc','price-desc','discount','ending'][e.target.selectedIndex]||'new';
+    applyFiltersAndRender();
+  });
+}
+
+/* ============ Notify modal ============ */
+let currentPiece = '';
+function openNotifyModal(name, loteNum) {
+  currentPiece = name;
+  document.getElementById('modal-piece-name').textContent = name;
+  const next = loteNum===1 ? 'drop 02 (−20%)' : loteNum===2 ? 'desapego final (−40%)' : '';
+  document.getElementById('modal-piece-desc').textContent =
+    next ? `Você recebe um aviso no WhatsApp quando "${name}" entrar em ${next}.`
+         : `Você recebe um aviso se essa peça sair do catálogo.`;
+  document.getElementById('modal-phone').value = '';
+  document.getElementById('notify-modal').classList.add('is-open');
+}
+function closeNotifyModal() {
+  document.getElementById('notify-modal').classList.remove('is-open');
+}
+function closeModal(e) {
+  if (e.target===document.getElementById('notify-modal')) closeNotifyModal();
+}
+function submitNotify() {
+  const ph = document.getElementById('modal-phone').value.trim();
+  if (!ph) { document.getElementById('modal-phone').focus(); return; }
+  alert(`Notificação ativada! Vamos avisar ${ph} quando ${currentPiece} mudar de lote.`);
+  closeNotifyModal();
+}
+function openWaNotify() {
+  const msg = encodeURIComponent(`Olá! Quero ser avisada quando "${currentPiece}" mudar de lote no Não Apego 🤍`);
+  window.open(`https://wa.me/5511999999999?text=${msg}`, '_blank');
+}
+
+/* ============ VIP submit ============ */
+function handleVipSubmit(btn) {
+  const input = btn.previousElementSibling;
+  if (!input.value.trim()) { input.focus(); return; }
+  btn.textContent = '✓ entrou!';
+  btn.style.background = 'var(--accent-2)';
+  btn.style.color = 'var(--ink)';
+  btn.disabled = true;
+}
+
+/* ============ Routing ============ */
+function go(route) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.toggle('is-active',p.dataset.page===route));
+  document.querySelectorAll('.nav-left button').forEach(b=>b.classList.toggle('is-active',b.dataset.route===route));
+  try{localStorage.setItem('na_route',route);}catch(e){}
+  window.scrollTo({top:0,behavior:'instant'});
+}
+document.querySelectorAll('.nav-left button').forEach(btn=>{
+  btn.addEventListener('click',()=>go(btn.dataset.route));
 });
 
-document.getElementById('moreBtn').addEventListener('click', () => {
-  page++;
-  render();
-});
+/* ============ Tweaks ============ */
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "palette": "quiet",
+  "type": "editorial",
+  "lang": "pt"
+}/*EDITMODE-END*/;
+let tweakState = {...TWEAK_DEFAULTS};
 
-loadData();
+function applyTweaks() {
+  document.body.dataset.palette = tweakState.palette;
+  document.body.dataset.type = tweakState.type;
+  document.querySelectorAll('[data-tw]').forEach(group=>{
+    const key=group.dataset.tw;
+    group.querySelectorAll('.tw-opt').forEach(btn=>{
+      btn.classList.toggle('is-on', btn.dataset.val===tweakState[key]);
+    });
+  });
+}
+document.querySelectorAll('.tweaks [data-tw]').forEach(group=>{
+  const key=group.dataset.tw;
+  group.querySelectorAll('.tw-opt').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      tweakState[key]=btn.dataset.val;
+      applyTweaks();
+      try{window.parent.postMessage({type:'__edit_mode_set_keys',edits:{[key]:btn.dataset.val}},'*');}catch(e){}
+    });
+  });
+});
+function openTweaks(){document.getElementById('tweaks').classList.add('is-open');}
+function closeTweaks(){document.getElementById('tweaks').classList.remove('is-open');}
+window.addEventListener('message',e=>{
+  if(!e.data||typeof e.data!=='object')return;
+  if(e.data.type==='__activate_edit_mode')openTweaks();
+  if(e.data.type==='__deactivate_edit_mode')closeTweaks();
+});
+try{window.parent.postMessage({type:'__edit_mode_available'},'*');}catch(e){}
+
+/* ============ Init ============ */
+(async () => {
+  renderSplitImage();
+  renderMarquee();
+  applyTweaks();
+  try{const s=localStorage.getItem('na_route');if(s)go(s);}catch(e){}
+
+  const loading = '<div style="grid-column:1/-1;padding:48px;text-align:center;color:var(--mute);font-size:14px;">carregando peças…</div>';
+  document.getElementById('featured-grid').innerHTML = loading;
+  document.getElementById('shop-grid').innerHTML = loading;
+
+  try { await loadData(); } catch(e) { console.error('CSV error:', e); }
+
+  renderFeatured();
+  renderShop();
+  renderInfluencers();
+  renderFilters();
+  updateCounts();
+})();
 </script>
 </body>
 </html>
