@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>não apego — admin</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #fafaf8;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .box {
+      background: #fff;
+      border: 1px solid #e8e4df;
+      border-radius: 12px;
+      padding: 40px 28px;
+      width: 100%;
+      max-width: 320px;
+      text-align: center;
+    }
+    .logo {
+      font-size: 1.1rem;
+      font-weight: 300;
+      letter-spacing: 0.18em;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      font-size: 0.78rem;
+      color: #8a8580;
+      margin-bottom: 32px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    input {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1px solid #e8e4df;
+      border-radius: 8px;
+      font-size: 1rem;
+      outline: none;
+      margin-bottom: 12px;
+      text-align: center;
+      letter-spacing: 0.08em;
+    }
+    input:focus { border-color: #2d2d2d; }
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #2d2d2d;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    button:hover { background: #111; }
+    .err {
+      color: #e74c3c;
+      font-size: 0.82rem;
+      margin-top: 12px;
+      display: none;
+    }
+    .back {
+      display: block;
+      margin-top: 20px;
+      font-size: 0.8rem;
+      color: #8a8580;
+      text-decoration: none;
+    }
+    .back:hover { color: #2d2d2d; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div class="logo">não apego</div>
+    <div class="subtitle">área restrita</div>
+    <form id="form">
+      <input type="password" id="pwd" placeholder="senha" autofocus />
+      <button type="submit">entrar</button>
+      <div class="err" id="err">senha incorreta</div>
+    </form>
+    <a class="back" href="/">← voltar ao catálogo</a>
+  </div>
+
+  <script>
+    const ADMIN_URL = 'https://script.google.com/macros/s/AKfycbyvL0erU-4cueWvuaFnY30J-PS6Lxu0GZn7nYvX1YtGp49CnNWkn5ejVeMTqCE3dZeq2Q/exec';
+
+    if (new URLSearchParams(location.search).get('err') === '1') {
+      document.getElementById('err').style.display = 'block';
+    }
+
+    document.getElementById('form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const pwd = document.getElementById('pwd').value.trim();
+      if (!pwd) return;
+      window.location.href = ADMIN_URL + '?pwd=' + encodeURIComponent(pwd);
+    });
+  </script>
+</body>
+</html>

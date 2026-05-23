@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>não apego</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #fafaf8;
+      --surface: #ffffff;
+      --border: #e8e4df;
+      --text: #1a1a1a;
+      --muted: #8a8580;
+      --accent: #2d2d2d;
+      --tag-bg: #f0ece8;
+      --wha: #25d366;
+      --wha-dark: #1da851;
+      --radius: 12px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+    }
+
+    /* HEADER */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 20px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .logo {
+      font-size: 1.15rem;
+      font-weight: 300;
+      letter-spacing: 0.18em;
+      white-space: nowrap;
+    }
+    .search-input {
+      flex: 1;
+      padding: 8px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.15s;
+      min-width: 0;
+    }
+    .search-input:focus { border-color: var(--accent); }
+
+    /* FILTERS */
+    .filters-wrap {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px;
+    }
+    .filters {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      gap: 6px;
+      padding: 10px 0;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .filters::-webkit-scrollbar { display: none; }
+    .chip {
+      padding: 5px 14px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: transparent;
+      font-size: 0.82rem;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+      color: var(--text);
+    }
+    .chip:hover { border-color: var(--accent); }
+    .chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+    /* COUNT */
+    .count-bar {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 10px 20px 4px;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    /* GRID */
+    .grid {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 12px 16px 48px;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+    @media (min-width: 480px) {
+      .grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (min-width: 700px) {
+      .grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+    }
+    @media (min-width: 1000px) {
+      .grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+    }
+
+    /* CARD */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .card:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0,0,0,0.07); }
+
+    .card-photo {
+      aspect-ratio: 3/4;
+      background: var(--tag-bg);
+      overflow: hidden;
+      position: relative;
+    }
+    .card-photo img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .card-photo .placeholder {
+      width: 100%; height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5rem;
+      opacity: 0.25;
+    }
+    .badge-reservado {
+      position: absolute;
+      top: 8px; left: 8px;
+      background: rgba(0,0,0,0.6);
+      color: #fff;
+      font-size: 0.67rem;
+      padding: 3px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .card-body {
+      padding: 10px 11px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      flex: 1;
+    }
+    .card-brand {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .card-desc {
+      font-size: 0.85rem;
+      line-height: 1.35;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .card-tags {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+    .tag {
+      font-size: 0.68rem;
+      padding: 2px 7px;
+      background: var(--tag-bg);
+      border-radius: 4px;
+      color: var(--muted);
+    }
+    .card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: auto;
+      padding-top: 8px;
+    }
+    .price {
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
+    .btn-wha {
+      background: var(--wha);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: background 0.15s;
+    }
+    .btn-wha:hover { background: var(--wha-dark); }
+
+    /* LOAD MORE */
+    .more-wrap {
+      text-align: center;
+      padding: 8px 0 48px;
+    }
+    .btn-more {
+      padding: 10px 36px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      font-size: 0.88rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-more:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+    /* STATES */
+    .msg {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="logo">não apego</div>
+    <input class="search-input" type="search" id="search" placeholder="buscar marca, peça…" />
+  </div>
+</header>
+
+<div class="filters-wrap">
+  <div class="filters" id="filters">
+    <button class="chip active" data-size="">todos</button>
+    <button class="chip" data-size="PP">PP</button>
+    <button class="chip" data-size="P">P</button>
+    <button class="chip" data-size="M">M</button>
+    <button class="chip" data-size="G">G</button>
+    <button class="chip" data-size="GG">GG</button>
+    <button class="chip" data-size="U">tamanho único</button>
+  </div>
+</div>
+
+<div class="count-bar" id="countBar"></div>
+<div class="grid" id="grid"></div>
+<div class="more-wrap" id="moreWrap" style="display:none">
+  <button class="btn-more" id="moreBtn">ver mais</button>
+</div>
+
+<script>
+// ─── CONFIGURAÇÃO ──────────────────────────────────────────────────────────
+const CONFIG = {
+  // 1. Publique a aba ESTOQUE do Google Sheets como CSV e cole a URL aqui
+  //    Sheets → Arquivo → Compartilhar → Publicar na web → Aba: Estoque → CSV
+  csvUrl: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTOzoKrPmyC0PJdAgViWTvZFotooklF89mciD2e-aVuCk1lMyw_SiTKjMAFfqpOBF3H2BiOBkHabq0l/pub?output=csv',
+
+  // 2. Número do WhatsApp do não apego (só dígitos, DDI 55 incluso)
+  //    Ex: '5511987654321'
+  whatsappNumber: 'NUMERO_DO_WHATSAPP',
+
+  // Cards por página
+  pageSize: 24,
+
+  // Status que ocultam a peça do catálogo
+  hiddenStatus: ['Pago', 'pago', 'Cancelado', 'cancelado'],
+
+  // Status que mostram badge "reservado" mas não ocultam
+  reservedStatus: ['Reservado', 'reservado'],
+
+  // Nomes exatos das colunas na planilha
+  col: {
+    id:          'Código',
+    description: 'Descritivo Peça',
+    brand:       'Marca',
+    size:        'Tamanho',
+    color:       'Cor',
+    condition:   'Condição',
+    price:       'Preço Total',
+    status:      'Status',
+    photo:       'Foto',   // nova coluna: URL de compartilhamento do Google Drive
+  }
+};
+// ──────────────────────────────────────────────────────────────────────────
+
+let allItems = [];
+let filtered = [];
+let page = 1;
+let activeSize = '';
+let searchTerm = '';
+
+// Extrai URL de imagem de um link do Google Drive
+function photoUrl(raw) {
+  if (!raw) return null;
+  raw = raw.trim();
+  // URL direta (não-Drive)
+  if (raw.startsWith('http') && !raw.includes('drive.google')) return raw;
+  // Extrai file ID de qualquer formato de link do Drive
+  const m = raw.match(/[-\w]{25,}/);
+  if (!m) return null;
+  return `https://drive.google.com/thumbnail?id=${m[0]}&sz=w600`;
+}
+
+function formatPrice(raw) {
+  const n = parseFloat(String(raw).replace(/[R$\s"]/g, '').replace(',', '.'));
+  if (isNaN(n)) return raw || '';
+  return 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 0 });
+}
+
+// Normaliza tamanhos para os chips de filtro
+function normalizeSize(raw) {
+  if (!raw) return '';
+  const s = String(raw).trim().toUpperCase().replace(/\s/g, '');
+  const num = parseFloat(s);
+  if (!isNaN(num)) {
+    if (num <= 36) return 'PP';
+    if (num === 38) return 'P';
+    if (num === 40) return 'M';
+    if (num === 42) return 'G';
+    if (num >= 44) return 'GG';
+  }
+  const map = { PP:'PP', P:'P', M:'M', G:'G', GG:'GG',
+                XS:'PP', S:'P', L:'G', XL:'GG', XXL:'GG',
+                'ÚNICO':'U', UNICO:'U', U:'U', 'TAM.ÚNICO':'U' };
+  return map[s] || s;
+}
+
+function waLink(item) {
+  const msg = `Olá! Tenho interesse na peça ${item.id} — ${item.brand} ${item.description} (${item.size}) — ${formatPrice(item.price)}`;
+  return `https://wa.me/${CONFIG.whatsappNumber}?text=${encodeURIComponent(msg)}`;
+}
+
+function renderCard(item) {
+  const img = photoUrl(item.photo);
+  const reserved = CONFIG.reservedStatus.includes(item.status);
+
+  return `<div class="card">
+    <div class="card-photo">
+      ${img
+        ? `<img src="${img}" alt="${item.description}" loading="lazy"
+             onerror="this.outerHTML='<div class=\\"placeholder\\">👗</div>'">`
+        : `<div class="placeholder">👗</div>`}
+      ${reserved ? `<span class="badge-reservado">reservado</span>` : ''}
+    </div>
+    <div class="card-body">
+      <div class="card-brand">${item.brand || '—'}</div>
+      <div class="card-desc">${item.description || ''}</div>
+      <div class="card-tags">
+        ${item.size      ? `<span class="tag">${item.size}</span>` : ''}
+        ${item.color     ? `<span class="tag">${item.color}</span>` : ''}
+        ${item.condition ? `<span class="tag">${item.condition}</span>` : ''}
+      </div>
+      <div class="card-footer">
+        <span class="price">${formatPrice(item.price)}</span>
+        ${!reserved
+          ? `<a class="btn-wha" href="${waLink(item)}" target="_blank" rel="noopener">
+               💬 quero
+             </a>`
+          : ''}
+      </div>
+    </div>
+  </div>`;
+}
+
+function applyFilters() {
+  filtered = allItems.filter(item => {
+    if (activeSize && normalizeSize(item.size) !== activeSize) return false;
+    if (searchTerm) {
+      const hay = [item.brand, item.description, item.color, item.id]
+        .join(' ').toLowerCase();
+      if (!hay.includes(searchTerm)) return false;
+    }
+    return true;
+  });
+  page = 1;
+  render();
+}
+
+function render() {
+  const grid     = document.getElementById('grid');
+  const countBar = document.getElementById('countBar');
+  const moreWrap = document.getElementById('moreWrap');
+
+  const slice = filtered.slice(0, page * CONFIG.pageSize);
+
+  if (!filtered.length) {
+    grid.innerHTML = `<div class="msg">nenhuma peça encontrada</div>`;
+    countBar.textContent = '';
+    moreWrap.style.display = 'none';
+    return;
+  }
+
+  grid.innerHTML = slice.map(renderCard).join('');
+  countBar.textContent =
+    `${filtered.length} peça${filtered.length !== 1 ? 's' : ''} disponível${filtered.length !== 1 ? 'is' : ''}`;
+  moreWrap.style.display = filtered.length > slice.length ? 'block' : 'none';
+}
+
+async function loadData() {
+  document.getElementById('grid').innerHTML = `<div class="msg">carregando…</div>`;
+
+  if (CONFIG.csvUrl === 'COLE_AQUI_A_URL_DO_CSV') {
+    document.getElementById('grid').innerHTML =
+      `<div class="msg">⚙️ Configure <strong>CONFIG.csvUrl</strong> no index.html<br>
+       (Sheets → Arquivo → Compartilhar → Publicar na web → CSV)</div>`;
+    return;
+  }
+
+  Papa.parse(CONFIG.csvUrl, {
+    download: true,
+    header: true,
+    skipEmptyLines: true,
+    transformHeader: h => h.trim(),
+    transform: v => v.trim(),
+    complete({ data }) {
+      const c = CONFIG.col;
+      allItems = data
+        .filter(row => {
+          const st = (row[c.status] || '').trim();
+          return !CONFIG.hiddenStatus.includes(st);
+        })
+        .map(row => ({
+          id:          (row[c.id]          || '').trim(),
+          description: (row[c.description] || '').trim(),
+          brand:       (row[c.brand]       || '').trim(),
+          size:        (row[c.size]        || '').trim(),
+          color:       (row[c.color]       || '').trim(),
+          condition:   (row[c.condition]   || '').trim(),
+          price:       (row[c.price]       || '').trim(),
+          status:      (row[c.status]      || '').trim(),
+          photo:       (row[c.photo]       || '').trim(),
+        }));
+      filtered = allItems;
+      render();
+    },
+    error(err) {
+      document.getElementById('grid').innerHTML =
+        `<div class="msg">Erro ao carregar peças.<br>Verifique se a planilha está publicada.</div>`;
+      console.error(err);
+    }
+  });
+}
+
+// Eventos
+document.getElementById('filters').addEventListener('click', e => {
+  const chip = e.target.closest('.chip');
+  if (!chip) return;
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  chip.classList.add('active');
+  activeSize = chip.dataset.size;
+  applyFilters();
+});
+
+document.getElementById('search').addEventListener('input', e => {
+  searchTerm = e.target.value.trim().toLowerCase();
+  applyFilters();
+});
+
+document.getElementById('moreBtn').addEventListener('click', () => {
+  page++;
+  render();
+});
+
+loadData();
+</script>
+</body>
+</html>
