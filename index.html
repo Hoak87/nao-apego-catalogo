@@ -339,13 +339,12 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
       <button data-route="shop">bazar</button>
       <button data-route="how">como funciona</button>
       <button data-route="about">manifesto</button>
-      <button data-route="events">lives</button>
     </nav>
     <a class="logo" href="#" onclick="go('home');return false;">
       não<span class="dot"></span>apego
     </a>
     <div class="nav-right">
-      <a href="#" class="nav-ig">@naoapegobazar</a>
+      <a href="https://www.instagram.com/naoapegobazar/" target="_blank" rel="noopener" class="nav-ig">@naoapegobazar</a>
       <a class="wa-pill" id="wa-pill-nav" href="#" target="_blank" rel="noopener"><svg class="wa-icon" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg><span class="nav-wa">abrir whatsapp</span></a>
     </div>
   </div>
@@ -363,10 +362,6 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
           <div>
             <span class="eyebrow">catálogo vivo</span>
             <strong>peças em 3 drops de desconto</strong>
-          </div>
-          <div>
-            <span class="eyebrow">próxima live</span>
-            <strong>quinta · 15.05 · 20h</strong>
           </div>
         </div>
         <div class="hero-ticker">
@@ -437,24 +432,6 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
     </div>
   </section>
 
-  <!-- Live banner -->
-  <section class="live-banner">
-    <div>
-      <div class="eyebrow" style="color:currentColor;opacity:0.6;margin-bottom:18px;">próxima live · instagram</div>
-      <h2>
-        como usar<br/>
-        <span class="it">as peças</span><br/>do bazar
-      </h2>
-    </div>
-    <div class="live-banner-meta">
-      <span class="date">qui, 15 maio · 20h</span>
-      <span class="loc">@naoapegobazar · gratuita · ao vivo</span>
-      <a href="#" class="rsvp" onclick="go('events');return false;">
-        <span>ativar lembrete</span>
-        <span>→</span>
-      </a>
-    </div>
-  </section>
 
   <!-- VIP Community -->
   <section class="vip-block">
@@ -475,7 +452,8 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
         <button class="vip-submit" onclick="handleVipSubmit(this)">entrar</button>
       </div>
       <div class="vip-or">ou</div>
-      <a class="vip-pill" href="#">entrar no grupo vip →</a>
+      <a class="vip-pill" id="vip-group-link" href="#">entrar no grupo vip →</a>
+
     </div>
   </section>
 
@@ -501,14 +479,13 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
           <h4>informações</h4>
           <a href="#" onclick="go('about');return false;">sobre</a>
           <a href="#" onclick="go('how');return false;">como funciona</a>
-          <a href="#" onclick="go('events');return false;">lives</a>
           <a href="#">enviar peças</a>
         </div>
         <div class="footer-col">
           <h4>contato</h4>
-          <a href="#">@naoapegobazar</a>
-          <a href="#">whatsapp</a>
-          <a href="#">contato@naoapego.com.br</a>
+          <a href="https://www.instagram.com/naoapegobazar/" target="_blank" rel="noopener">@naoapegobazar</a>
+          <a href="#" id="footer-wa-link">whatsapp</a>
+          <a href="mailto:contato@naoapego.com.br">contato@naoapego.com.br</a>
         </div>
       </div>
       <div class="footer-bottom">
@@ -753,7 +730,7 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
       </div>
 
       <div style="margin-top:32px;text-align:center;">
-        <a href="#" class="hero-cta" style="display:inline-flex;">
+        <a href="#" class="hero-cta desapegar-cta" style="display:inline-flex;">
           <span>quero desapegar →</span>
         </a>
       </div>
@@ -761,118 +738,6 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
   </section>
 </section>
 
-<!-- ============ LIVES & COMUNIDADE ============ -->
-<section class="page" data-page="events">
-  <div class="shop-head">
-    <div class="wrap">
-      <div class="shop-head-top">
-        <h1 class="display shop-title">lives &<br/><span class="it">comunidade</span></h1>
-        <div class="eyebrow">instagram · youtube · toda quinta</div>
-      </div>
-      <p style="max-width:540px;font-size:17px;color:var(--ink-2);margin-top:24px;margin-bottom:0;">
-        Toda semana a Lu e as amigas vão ao vivo pra falar de moda, styling, como usar as peças do bazar, novidades e um pouquinho de tudo. Vem junto.
-      </p>
-    </div>
-  </div>
-
-  <div class="wrap" style="padding-top:48px;">
-
-    <!-- Próximas lives -->
-    <div class="eyebrow" style="margin-bottom:24px;">próximas lives</div>
-
-    <div class="live-card">
-      <div>
-        <div class="live-day">15</div>
-        <div class="live-month">maio · qui</div>
-      </div>
-      <div>
-        <span class="live-status agendada">agendada</span>
-        <h3>como montar looks com as peças do bazar</h3>
-        <div class="host">com Lu Bittencourt · @naoapegobazar</div>
-        <div class="topic">Styling ao vivo: pega as peças do catálogo e mostra combinações que você talvez não tenha pensado. Tira dúvidas de medida em tempo real.</div>
-      </div>
-      <a href="#" class="live-cta-btn">ativar lembrete →</a>
-    </div>
-
-    <div class="live-card">
-      <div>
-        <div class="live-day">22</div>
-        <div class="live-month">maio · qui</div>
-      </div>
-      <div>
-        <span class="live-status agendada">agendada</span>
-        <h3>drop ao vivo — nova coleção cápsula</h3>
-        <div class="host">com Lu Bittencourt + convidadas</div>
-        <div class="topic">Lançamento ao vivo de uma nova coleção. Quem estiver na live tem acesso 30 minutos antes do catálogo público. Grupo VIP tem acesso 24h antes.</div>
-      </div>
-      <a href="#" class="live-cta-btn">ativar lembrete →</a>
-    </div>
-
-    <div class="live-card">
-      <div>
-        <div class="live-day">05</div>
-        <div class="live-month">jun · qui</div>
-      </div>
-      <div>
-        <span class="live-status agendada">agendada</span>
-        <h3>armário cápsula: o que realmente vale guardar</h3>
-        <div class="host">com Lu Bittencourt</div>
-        <div class="topic">Uma conversa honesta sobre consumo consciente, desapego, e por que o menos pode ser mais quando a peça é boa.</div>
-      </div>
-      <a href="#" class="live-cta-btn">ativar lembrete →</a>
-    </div>
-
-    <!-- Lives passadas -->
-    <div class="eyebrow" style="margin-top:64px;margin-bottom:24px;">lives passadas</div>
-
-    <div class="live-card">
-      <div>
-        <div class="live-day" style="font-size:36px;color:var(--mute);">08</div>
-        <div class="live-month">mai · qui</div>
-      </div>
-      <div>
-        <span class="live-status passada">encerrada</span>
-        <h3 style="color:var(--mute);">como lavar roupas delicadas sem estragar</h3>
-        <div class="host">com Lu Bittencourt · 1.240 espectadoras</div>
-      </div>
-      <a href="#" class="live-cta-btn past">ver gravação</a>
-    </div>
-
-    <div class="live-card">
-      <div>
-        <div class="live-day" style="font-size:36px;color:var(--mute);">01</div>
-        <div class="live-month">mai · qui</div>
-      </div>
-      <div>
-        <span class="live-status passada">encerrada</span>
-        <h3 style="color:var(--mute);">trend code: o que está em alta no closet das influencers</h3>
-        <div class="host">com Lu Bittencourt · 2.180 espectadoras</div>
-      </div>
-      <a href="#" class="live-cta-btn past">ver gravação</a>
-    </div>
-
-  </div>
-
-  <!-- VIP na página de lives também -->
-  <section class="vip-block" style="margin-top:80px;">
-    <div>
-      <div class="eyebrow" style="color:var(--accent-2);margin-bottom:20px;">comunidade vip</div>
-      <h2>você<br/><span class="it">sabe</span><br/>antes.</h2>
-    </div>
-    <div>
-      <p>Entre no grupo VIP e receba: avisos de live 24h antes, acesso antecipado às coleções, notificação de mudança de lote nas peças que você quer.</p>
-      <div class="vip-benefits">
-        <div class="vip-benefit">acesso 24h antes de cada nova coleção</div>
-        <div class="vip-benefit">notificação de mudança de drop</div>
-        <div class="vip-benefit">convites antecipados para as lives</div>
-        <div class="vip-benefit">canal direto com a Lu</div>
-      </div>
-      <a class="vip-pill" href="#">entrar no grupo vip →</a>
-    </div>
-  </section>
-
-  <div style="height:80px;"></div>
-</section>
 
 </main>
 
@@ -1284,7 +1149,7 @@ function submitNotify() {
 }
 function openWaNotify() {
   const msg = encodeURIComponent(`Olá! Quero ser avisada quando "${currentPiece}" mudar de lote no Não Apego 🤍`);
-  window.open(`https://wa.me/5511999999999?text=${msg}`, '_blank');
+  window.open(`https://wa.me/${CONFIG.whatsappNumber}?text=${msg}`, '_blank');
 }
 
 /* ============ VIP submit ============ */
@@ -1363,6 +1228,25 @@ try{window.parent.postMessage({type:'__edit_mode_available'},'*');}catch(e){}
   renderInfluencers();
   renderFilters();
   updateCounts();
+
+  // Conecta links que dependem de CONFIG
+  const waNav = document.getElementById('wa-pill-nav');
+  if (waNav) waNav.href = `https://wa.me/${CONFIG.whatsappNumber}`;
+
+  const footerWa = document.getElementById('footer-wa-link');
+  if (footerWa) footerWa.href = `https://wa.me/${CONFIG.whatsappNumber}`;
+
+  const vipWaMsg = encodeURIComponent('Olá! Quero entrar no grupo VIP do Não Apego 🤍');
+  document.querySelectorAll('.vip-group-link, #vip-group-link').forEach(el => {
+    el.href = CONFIG.whatsappGroupLink !== '#'
+      ? CONFIG.whatsappGroupLink
+      : `https://wa.me/${CONFIG.whatsappNumber}?text=${vipWaMsg}`;
+  });
+
+  const desapegarMsg = encodeURIComponent('Olá! Quero desapegar minhas peças no Não Apego 🤍');
+  document.querySelectorAll('.desapegar-cta').forEach(el => {
+    el.href = `https://wa.me/${CONFIG.whatsappNumber}?text=${desapegarMsg}`;
+  });
 })();
 </script>
 </body>
