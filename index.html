@@ -214,6 +214,12 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
 .filter-chip{padding:8px 14px;border:1px solid var(--line);border-radius:100px;font-size:12px;font-weight:500;transition:all 0.15s;}
 .filter-chip:hover{border-color:var(--ink);}
 .filter-chip.is-on{background:var(--ink);color:var(--bg);border-color:var(--ink);}
+.shop-search{display:flex;align-items:center;gap:10px;padding:16px 0 4px;border-bottom:1px solid var(--line);margin-bottom:4px;}
+.shop-search input{flex:1;border:0;background:transparent;font:inherit;font-size:14px;color:var(--ink);outline:none;padding:4px 0;}
+.shop-search input::placeholder{color:var(--mute);}
+.shop-search .s-icon{color:var(--mute);flex-shrink:0;}
+.shop-search .s-clear{color:var(--mute);font-size:18px;line-height:1;cursor:pointer;padding:0 2px;display:none;}
+.shop-search.has-query .s-clear{display:block;}
 .shop-sort{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-top:1px solid var(--line);font-size:12px;color:var(--mute);letter-spacing:0.06em;}
 .shop-sort select{font:inherit;color:var(--ink);background:transparent;border:0;font-size:12px;letter-spacing:0.06em;cursor:pointer;}
 
@@ -440,11 +446,10 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
       <h2>você<br/><span class="it">sabe</span><br/>antes.</h2>
     </div>
     <div>
-      <p>Entre no grupo VIP e receba: novas coleções em primeira mão, aviso de mudança de drop das peças que você quer, convites para nossas lives e acesso a peças antes do catálogo público.</p>
+      <p>Entre no grupo VIP e receba: novas coleções em primeira mão, aviso de mudança de drop das peças que você quer e acesso a peças antes do catálogo público.</p>
       <div class="vip-benefits">
         <div class="vip-benefit">acesso 24h antes de cada nova coleção</div>
         <div class="vip-benefit">notificação quando uma peça muda de drop</div>
-        <div class="vip-benefit">convites antecipados para as lives</div>
         <div class="vip-benefit">canal direto com a Lu para tirar dúvidas</div>
       </div>
       <div class="vip-input-row">
@@ -519,6 +524,11 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
         </div>
       </div>
       <div class="shop-filters" id="filters"></div>
+      <div class="shop-search" id="shop-search">
+        <svg class="s-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input id="search-input" type="search" placeholder="buscar por peça, marca, cor…" autocomplete="off" autocorrect="off" spellcheck="false" />
+        <span class="s-clear" id="search-clear" onclick="clearSearch()">×</span>
+      </div>
     </div>
     <div class="wrap">
       <div class="shop-sort">
@@ -835,6 +845,7 @@ async function loadData() {
             name:  r['Descritivo Peça']||'',
             size:  r['Tamanho']||'',
             color: r['Cor']||'',
+            tipo:  extractTipo(r['Descritivo Peça']||''),
             price:     fmtPrice(r['Preço Atual']||r['Preço Total']||''),
             origPrice: fmtPrice(r['Preço Original']||''),
             infl:      r['Closet']==='anônimo' ? 'anônimo' : abbrev(r['Closet']||''),
@@ -1018,7 +1029,24 @@ function renderMarquee() {
 }
 
 /* ============ Filter state + logic ============ */
-const filterState = { size:'', lote:0, brand:'', sort:'new' };
+const filterState = { size:'', lote:0, brand:'', color:'', tipo:'', search:'', sort:'new' };
+
+const TIPO_KEYWORDS = [
+  ['bota','Bota'],['tênis','Tênis'],['tenis','Tênis'],['sandália','Sandália'],['sandalia','Sandália'],
+  ['sapato','Sapato'],['mule','Mule'],['scarpin','Scarpin'],['mocassim','Mocassim'],
+  ['jaqueta','Jaqueta'],['casaco','Casaco'],['sobretudo','Casaco'],['blazer','Blazer'],
+  ['colete','Colete'],['tricô','Tricô'],['trico','Tricô'],
+  ['vestido','Vestido'],['macacão','Macacão'],['macacao','Macacão'],['body','Body'],
+  ['calça','Calça'],['calca','Calça'],['legging','Legging'],
+  ['saia','Saia'],['shorts','Shorts'],['bermuda','Shorts'],
+  ['blusa','Blusa'],['camisa','Camisa'],['camiseta','Camiseta'],['top','Top'],['regata','Regata'],
+  ['bolsa','Bolsa'],['mochila','Bolsa'],['cinto','Cinto'],['lenço','Acessório'],['lenco','Acessório'],
+];
+function extractTipo(name) {
+  const lower = name.toLowerCase();
+  for (const [kw, label] of TIPO_KEYWORDS) { if (lower.includes(kw)) return label; }
+  return '';
+}
 
 function parsePrice(s) {
   return parseFloat(String(s).replace(/[R$\s.]/g,'').replace(',','.')) || 0;
@@ -1040,6 +1068,19 @@ function applyFiltersAndRender() {
   if (filterState.size)  list = list.filter(p => normalizeSize(p.size) === filterState.size);
   if (filterState.lote)  list = list.filter(p => getLote(p.days).n === filterState.lote);
   if (filterState.brand) list = list.filter(p => p.brand.toLowerCase() === filterState.brand.toLowerCase());
+  if (filterState.color) list = list.filter(p => p.color.toLowerCase() === filterState.color.toLowerCase());
+  if (filterState.tipo)  list = list.filter(p => p.tipo === filterState.tipo);
+  if (filterState.search) {
+    const q = filterState.search.toLowerCase();
+    list = list.filter(p =>
+      p.name.toLowerCase().includes(q) ||
+      p.brand.toLowerCase().includes(q) ||
+      p.color.toLowerCase().includes(q) ||
+      p.tipo.toLowerCase().includes(q) ||
+      p.id.toLowerCase().includes(q) ||
+      normalizeSize(p.size).toLowerCase().includes(q)
+    );
+  }
   switch(filterState.sort){
     case 'price-asc':  list.sort((a,b)=>parsePrice(a.price)-parsePrice(b.price)); break;
     case 'price-desc': list.sort((a,b)=>parsePrice(b.price)-parsePrice(a.price)); break;
@@ -1101,6 +1142,8 @@ function renderFilters() {
         <button class="filter-chip brand-chip is-on" data-brand="">todas</button>
         ${topBrands.map(b=>`<button class="filter-chip brand-chip" data-brand="${b}">${b}</button>`).join('')}
       </div>`:''}
+      ${(()=>{const tipos=[...new Set(PIECES.map(p=>p.tipo).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));return tipos.length?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;"><span class="eyebrow" style="margin-right:6px;">tipo</span><button class="filter-chip tipo-chip is-on" data-tipo="">todos</button>${tipos.map(t=>`<button class="filter-chip tipo-chip" data-tipo="${t}">${t.toLowerCase()}</button>`).join('')}</div>`:'';})()}
+      ${(()=>{const colors=[...new Set(PIECES.map(p=>p.color).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));return colors.length?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;"><span class="eyebrow" style="margin-right:6px;">cor</span><button class="filter-chip color-chip is-on" data-color="">todas</button>${colors.map(c=>`<button class="filter-chip color-chip" data-color="${c}">${c.toLowerCase()}</button>`).join('')}</div>`:'';})()}
     </div>`;
 
   document.querySelectorAll('.size-chip').forEach(btn=>btn.addEventListener('click',()=>{
@@ -1115,6 +1158,21 @@ function renderFilters() {
     document.querySelectorAll('.brand-chip').forEach(b=>b.classList.remove('is-on'));
     btn.classList.add('is-on'); filterState.brand=btn.dataset.brand; applyFiltersAndRender();
   }));
+  document.querySelectorAll('.tipo-chip').forEach(btn=>btn.addEventListener('click',()=>{
+    document.querySelectorAll('.tipo-chip').forEach(b=>b.classList.remove('is-on'));
+    btn.classList.add('is-on'); filterState.tipo=btn.dataset.tipo; applyFiltersAndRender();
+  }));
+  document.querySelectorAll('.color-chip').forEach(btn=>btn.addEventListener('click',()=>{
+    document.querySelectorAll('.color-chip').forEach(b=>b.classList.remove('is-on'));
+    btn.classList.add('is-on'); filterState.color=btn.dataset.color; applyFiltersAndRender();
+  }));
+
+  // Search
+  document.getElementById('search-input')?.addEventListener('input', e=>{
+    filterState.search = e.target.value.trim();
+    document.getElementById('shop-search').classList.toggle('has-query', !!filterState.search);
+    applyFiltersAndRender();
+  });
 
   // Sort select
   document.querySelector('.shop-sort select')?.addEventListener('change', e=>{
@@ -1125,6 +1183,15 @@ function renderFilters() {
 
 /* ============ Notify modal ============ */
 let currentPiece = '';
+function clearSearch() {
+  const inp = document.getElementById('search-input');
+  if (!inp) return;
+  inp.value = '';
+  filterState.search = '';
+  document.getElementById('shop-search').classList.remove('has-query');
+  applyFiltersAndRender();
+}
+
 function openNotifyModal(name, loteNum) {
   currentPiece = name;
   document.getElementById('modal-piece-name').textContent = name;
