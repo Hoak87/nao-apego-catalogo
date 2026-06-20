@@ -871,7 +871,7 @@ async function loadData() {
             brand: r['Marca']||'',
             name:  r['Descritivo Peça']||'',
             size:  r['Tamanho']||'',
-            color: r['Cor']||'',
+            color: normalizeCor(r['Cor']||''),
             tipo:  extractTipo(r['Descritivo Peça']||''),
             price:     fmtPrice(r['Preço Atual']||r['Preço Total']||''),
             origPrice: fmtPrice(r['Preço Original']||''),
@@ -1059,16 +1059,54 @@ function renderMarquee() {
 /* ============ Filter state + logic ============ */
 const filterState = { size:'', lote:0, brand:'', color:'', tipo:'', search:'', sort:'new' };
 
+const COLOR_MAP = [
+  ['Animal Print',      ['animal print','onça','onca','zebra','tartaruga','leopardo']],
+  ['Estampado / Floral',['estampada','estampado','estampa','floral','colorido','colorida','listrado','listrada','bicolor','poá','poa','listra','tiedie','tie dye','preto e branco','branco e preto','p e b','preto com','com floral']],
+  ['Jeans',             ['jeans']],
+  ['Preto',             ['preto','preta','chumbo']],
+  ['Branco',            ['branco','branca']],
+  ['Off-white / Cru',   ['off white','off-white','cru','creme','gelo','palha','mescla','perola','pérola','marfim']],
+  ['Bege / Nude',       ['bege','nude','caramelo','ouro velho']],
+  ['Rosa',              ['rosa','pink','magenta','salmão','salmao']],
+  ['Vermelho / Vinho',  ['vermelho','vermelha','vinho']],
+  ['Laranja',           ['laranja']],
+  ['Amarelo / Mostarda',['amarelo','mostarda']],
+  ['Verde',             ['verde']],
+  ['Azul',              ['azul']],
+  ['Cinza',             ['cinza']],
+  ['Marrom / Terra',    ['marrom','terra']],
+  ['Roxo / Lilás',      ['roxo','roxa','lilas','lilás']],
+  ['Dourado / Prata',   ['dourado','prata']],
+];
+function normalizeCor(raw) {
+  if (!raw) return '';
+  const lower = raw.toLowerCase().trim();
+  for (const [label, kws] of COLOR_MAP) {
+    if (kws.some(k => lower.includes(k))) return label;
+  }
+  return raw;
+}
+
 const TIPO_KEYWORDS = [
-  ['bota','Bota'],['tênis','Tênis'],['tenis','Tênis'],['sandália','Sandália'],['sandalia','Sandália'],
-  ['sapato','Sapato'],['mule','Mule'],['scarpin','Scarpin'],['mocassim','Mocassim'],
-  ['jaqueta','Jaqueta'],['casaco','Casaco'],['sobretudo','Casaco'],['blazer','Blazer'],
-  ['colete','Colete'],['tricô','Tricô'],['trico','Tricô'],
-  ['vestido','Vestido'],['macacão','Macacão'],['macacao','Macacão'],['body','Body'],
-  ['calça','Calça'],['calca','Calça'],['legging','Legging'],
-  ['saia','Saia'],['shorts','Shorts'],['bermuda','Shorts'],
-  ['blusa','Blusa'],['camisa','Camisa'],['camiseta','Camiseta'],['top','Top'],['regata','Regata'],
-  ['bolsa','Bolsa'],['mochila','Bolsa'],['cinto','Cinto'],['lenço','Acessório'],['lenco','Acessório'],
+  ['macacão','Macacão'],['macacao','Macacão'],['jardineira','Macacão'],
+  ['casaco','Casaco / Jaqueta'],['jaqueta','Casaco / Jaqueta'],['sobretudo','Casaco / Jaqueta'],
+  ['blazer','Blazer'],
+  ['colete','Colete'],
+  ['tricô','Tricô'],['trico','Tricô'],['cardigan','Tricô'],['cardigã','Tricô'],
+  ['bota','Bota'],
+  ['sandália','Sandália / Sapato'],['sandalia','Sandália / Sapato'],['scarpin','Sandália / Sapato'],
+  ['mule','Sandália / Sapato'],['mocassim','Sandália / Sapato'],['sapato','Sandália / Sapato'],
+  ['tênis','Tênis'],['tenis','Tênis'],
+  ['bolsa','Bolsa'],['mochila','Bolsa'],['clutch','Bolsa'],
+  ['cinto','Acessório'],['lenço','Acessório'],['lenco','Acessório'],['cachecol','Acessório'],['chapéu','Acessório'],
+  ['vestido','Vestido'],
+  ['body','Top / Body'],['cropped','Top / Body'],['bralette','Top / Body'],
+  ['shorts','Shorts'],['bermuda','Shorts'],
+  ['saia','Saia'],
+  ['calça','Calça'],['calca','Calça'],['legging','Calça'],['pantacourt','Calça'],
+  ['camiseta','Blusa / Camiseta'],['blusa','Blusa / Camiseta'],['regata','Blusa / Camiseta'],['baby look','Blusa / Camiseta'],
+  ['camisa','Camisa'],
+  ['top','Top / Body'],
 ];
 function extractTipo(name) {
   const lower = name.toLowerCase();
