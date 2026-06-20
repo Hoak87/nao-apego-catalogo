@@ -291,7 +291,8 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
 .car-overlay.is-open{opacity:1;pointer-events:auto;}
 .car-wrap{position:relative;width:100%;max-width:520px;display:flex;flex-direction:column;align-items:center;padding:0 48px;}
 @media(max-width:600px){.car-wrap{padding:0 36px;}}
-.car-img{width:100%;max-height:78vh;object-fit:contain;border-radius:4px;user-select:none;}
+.car-img{width:100%;max-height:78vh;object-fit:contain;border-radius:4px;user-select:none;transition:opacity 0.2s;}
+.car-img.loading{opacity:0;}
 .car-close{position:fixed;top:14px;right:14px;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.14);color:#fff;font-size:22px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;border:0;z-index:10;}
 .car-close:hover{background:rgba(255,255,255,0.25);}
 .car-btn{position:fixed;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.14);border:0;color:#fff;font-size:28px;width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:10;}
@@ -841,12 +842,12 @@ function daysSince(str) {
   const d = parseEntryDate(str);
   return d ? Math.max(0, Math.floor((Date.now()-d.getTime())/86400000)) : 0;
 }
-function driveThumb(raw) {
+function driveThumb(raw, sz) {
   if (!raw || !raw.trim()) return null;
   const s = raw.trim();
   if (s.startsWith('http') && !s.includes('drive.google')) return s;
   const m = s.match(/[-\w]{25,}/);
-  return m ? 'https://drive.google.com/thumbnail?id='+m[0]+'&sz=w800' : null;
+  return m ? 'https://drive.google.com/thumbnail?id='+m[0]+'&sz='+(sz||'w400') : null;
 }
 function fmtPrice(raw) {
   const n = parseFloat(String(raw).replace(/[R$\s"]/g,'').replace(',','.'));
@@ -878,8 +879,8 @@ async function loadData() {
             infl:      r['Closet']==='anônimo' ? 'anônimo' : abbrev(r['Closet']||''),
             closetType: r['Tipo Closet']||'Open',
             days:  daysSince(r['Data Entrada']),
-            photos: (r['Foto']||'').split('|').map(u=>driveThumb(u.trim())).filter(Boolean),
-            photo: driveThumb((r['Foto']||'').split('|')[0].trim()),
+            photos: (r['Foto']||'').split('|').map(u=>driveThumb(u.trim(),'w1200')).filter(Boolean),
+            photo: driveThumb((r['Foto']||'').split('|')[0].trim(),'w400'),
             tag:   daysSince(r['Data Entrada'])<=14 ? 'new' : null,
             pal:   PALETTES[Math.abs(hash(r['Código']||r['Descritivo Peça']||''))%PALETTES.length],
           }));
@@ -1267,7 +1268,10 @@ function carNav(dir) {
   _carRender();
 }
 function _carRender() {
-  document.getElementById('car-img').src = _carPhotos[_carIdx];
+  const img = document.getElementById('car-img');
+  img.classList.add('loading');
+  img.onload = () => img.classList.remove('loading');
+  img.src = _carPhotos[_carIdx];
   const multi = _carPhotos.length > 1;
   document.getElementById('car-prev').style.display = multi ? 'flex' : 'none';
   document.getElementById('car-next').style.display = multi ? 'flex' : 'none';
