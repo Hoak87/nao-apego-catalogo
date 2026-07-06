@@ -9,73 +9,119 @@
     :root {
       --bg: #fafaf8; --surface: #fff; --border: #e8e4df;
       --text: #1a1a1a; --muted: #8a8580; --accent: #2d2d2d;
-      --green: #25d366; --red: #e74c3c;
+      --green: #25d366;
     }
-    body { background: var(--bg); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: var(--text); }
+    body { background: var(--bg); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: var(--text); padding-bottom: 40px; }
 
+    /* ── Header ── */
     header {
       background: var(--surface);
       border-bottom: 1px solid var(--border);
-      padding: 14px 16px;
+      padding: 14px 16px 0;
       position: sticky; top: 0; z-index: 10;
-      display: flex; align-items: center; justify-content: space-between;
     }
+    .header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
     .logo { font-size: 1rem; font-weight: 300; letter-spacing: 0.18em; }
-    .counter { font-size: 0.8rem; color: var(--muted); }
 
-    .list { padding: 12px 16px 80px; display: flex; flex-direction: column; gap: 10px; }
+    /* ── Contador ── */
+    .counter-block { margin-bottom: 12px; }
+    .counter-numbers { display: flex; align-items: baseline; gap: 6px; margin-bottom: 6px; }
+    .counter-big { font-size: 1.8rem; font-weight: 700; line-height: 1; }
+    .counter-label { font-size: 0.8rem; color: var(--muted); }
+    .counter-done { font-size: 0.78rem; color: var(--green); font-weight: 500; }
+    .progress-bar { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+    .progress-fill { height: 100%; background: var(--green); border-radius: 2px; transition: width 0.4s ease; }
 
+    /* ── Filtro closets ── */
+    .closet-filter {
+      display: flex; gap: 6px; overflow-x: auto; padding: 10px 0;
+      -webkit-overflow-scrolling: touch; scrollbar-width: none;
+    }
+    .closet-filter::-webkit-scrollbar { display: none; }
+
+    /* ── Dica galeria ── */
+    .gallery-hint {
+      margin: 0 16px 0;
+      padding: 8px 12px;
+      background: #f0f7ff;
+      border: 1px solid #cce0ff;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      color: #3a6ea8;
+      line-height: 1.4;
+    }
+
+    /* ── Busca ── */
+    .search-wrap { padding: 10px 16px 4px; }
+    .search-input {
+      width: 100%; padding: 9px 14px;
+      border: 1px solid var(--border); border-radius: 100px;
+      font-size: 0.85rem; background: var(--surface); color: var(--text);
+      outline: none; -webkit-appearance: none;
+    }
+    .search-input:focus { border-color: var(--accent); }
+
+    .filter-chip {
+      flex-shrink: 0;
+      padding: 6px 12px;
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      font-size: 0.78rem; font-weight: 500;
+      background: var(--surface); color: var(--text);
+      cursor: pointer; white-space: nowrap;
+      -webkit-tap-highlight-color: transparent;
+      transition: all 0.15s;
+    }
+    .filter-chip.is-on { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+    /* ── Lista ── */
+    .list { padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
+
+    /* ── Piece card ── */
     .piece-card {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 10px;
-      padding: 12px 14px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
+      padding: 10px 12px;
+      display: flex; align-items: center; gap: 12px;
       cursor: pointer;
-      transition: background 0.1s;
       -webkit-tap-highlight-color: transparent;
+      transition: background 0.1s;
     }
     .piece-card:active { background: #f0ece8; }
     .piece-card.uploading { opacity: 0.5; pointer-events: none; }
     .piece-card.done { border-color: var(--green); }
 
     .thumb {
-      width: 52px; height: 70px;
-      border-radius: 6px;
-      background: #f0ece8;
+      width: 48px; height: 64px;
+      border-radius: 6px; background: #f0ece8;
       flex-shrink: 0;
       display: flex; align-items: center; justify-content: center;
-      font-size: 1.4rem; overflow: hidden;
+      font-size: 1.2rem; overflow: hidden;
     }
     .thumb img { width: 100%; height: 100%; object-fit: cover; }
 
     .piece-info { flex: 1; min-width: 0; }
-    .piece-id   { font-size: 0.7rem; color: var(--muted); font-weight: 600; letter-spacing: 0.06em; }
-    .piece-desc { font-size: 0.88rem; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .piece-meta { font-size: 0.75rem; color: var(--muted); margin-top: 3px; }
+    .piece-id   { font-size: 0.68rem; color: var(--muted); font-weight: 600; letter-spacing: 0.06em; }
+    .piece-desc { font-size: 0.85rem; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .piece-meta { font-size: 0.72rem; color: var(--muted); margin-top: 3px; }
 
     .add-icon {
-      width: 32px; height: 32px;
-      border: 1.5px dashed var(--border);
-      border-radius: 50%;
+      width: 30px; height: 30px;
+      border: 1.5px dashed var(--border); border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
-      font-size: 1.1rem; color: var(--muted);
-      flex-shrink: 0;
+      font-size: 1rem; color: var(--muted); flex-shrink: 0;
     }
-    .piece-card.done .add-icon { border: none; color: var(--green); }
+    .piece-card.done .add-icon { border: none; color: var(--green); font-size: 1.1rem; }
 
     .spinner {
-      width: 20px; height: 20px;
-      border: 2px solid var(--border);
-      border-top-color: var(--accent);
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
+      width: 18px; height: 18px;
+      border: 2px solid var(--border); border-top-color: var(--accent);
+      border-radius: 50%; animation: spin 0.7s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
+    .empty { text-align: center; padding: 60px 20px; color: var(--muted); font-size: 0.9rem; }
     .loading-state { text-align: center; padding: 60px 20px; color: var(--muted); }
 
     input[type="file"] { display: none; }
@@ -83,11 +129,9 @@
     .toast {
       position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
       background: var(--accent); color: #fff;
-      padding: 10px 20px; border-radius: 8px;
-      font-size: 0.85rem;
+      padding: 10px 20px; border-radius: 8px; font-size: 0.85rem;
       opacity: 0; transition: opacity 0.2s;
-      pointer-events: none; white-space: nowrap;
-      z-index: 100;
+      pointer-events: none; white-space: nowrap; z-index: 100;
     }
     .toast.show { opacity: 1; }
   </style>
@@ -95,22 +139,46 @@
 <body>
 
 <header>
-  <div class="logo">não apego</div>
-  <div class="counter" id="counter"></div>
+  <div class="header-top">
+    <div class="logo">não apego</div>
+    <div style="display:flex;gap:6px;">
+      <button class="filter-chip is-on" id="btn-sem-foto" onclick="setMode('sem-foto')">sem foto</button>
+      <button class="filter-chip" id="btn-trocar" onclick="setMode('trocar')">trocar foto</button>
+    </div>
+  </div>
+  <div class="counter-block" id="counter-block" style="display:none;">
+    <div class="counter-numbers">
+      <span class="counter-big" id="counter-remaining">—</span>
+      <span class="counter-label">sem foto</span>
+      <span class="counter-done" id="counter-done-label"></span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+  </div>
+  <div class="closet-filter" id="closet-filter"></div>
 </header>
+
+<div class="gallery-hint" id="gallery-hint" style="display:none;">
+  📷 Ao tocar numa peça, escolha <strong>Galeria</strong> ou <strong>Fotos</strong> — não "Câmera"
+</div>
+<div class="search-wrap" id="search-wrap" style="display:none;">
+  <input class="search-input" id="search-input" type="search" placeholder="buscar por marca, descrição ou código…" autocomplete="off" />
+</div>
 
 <div id="app">
   <div class="loading-state">carregando peças…</div>
 </div>
 
-<input type="file" id="filePicker" accept="image/*" capture="environment" />
+<input type="file" id="filePicker" accept="image/*" />
 <div class="toast" id="toast"></div>
 
 <script>
-  let pieces = [];
-  let activePiece = null;
+  let allPieces    = [];
+  let activePiece  = null;
+  let activeCloset = 'todos';
+  let searchQuery  = '';
+  let totalOriginal = 0;
+  let mode         = 'sem-foto'; // 'sem-foto' | 'trocar'
 
-  // Comprime imagem para max 1200px e retorna { base64, mimeType }
   function compressImage(file) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -128,9 +196,7 @@
           const canvas = document.createElement('canvas');
           canvas.width = width; canvas.height = height;
           canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
-          const base64  = dataUrl.split(',')[1];
-          resolve({ base64, mimeType: 'image/jpeg' });
+          resolve({ base64: canvas.toDataURL('image/jpeg', 0.82).split(',')[1], mimeType: 'image/jpeg' });
         };
         img.src = e.target.result;
       };
@@ -145,56 +211,93 @@
     setTimeout(() => t.classList.remove('show'), duration);
   }
 
-  function updateCounter() {
-    const remaining = pieces.filter(p => !p.done).length;
-    document.getElementById('counter').textContent =
-      remaining > 0 ? `${remaining} sem foto` : 'tudo com foto ✓';
+  function formatPrice(raw) {
+    const n = parseFloat(String(raw).replace(/[R$\s"]/g, '').replace(',', '.'));
+    return isNaN(n) ? '' : 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 0 });
   }
 
-  function renderList() {
-    const app = document.getElementById('app');
-    const remaining = pieces.filter(p => !p.done);
+  function visiblePieces() {
+    return mode === 'sem-foto'
+      ? allPieces.filter(p => !p.hasPhoto && !p.done)
+      : allPieces.filter(p => p.hasPhoto && !p.done);
+  }
 
-    if (!remaining.length) {
-      app.innerHTML = `<div class="empty">🎉 Todas as peças têm foto!</div>`;
-      updateCounter();
-      return;
-    }
+  function updateCounter() {
+    const list      = allPieces.filter(p => !p.hasPhoto);
+    const remaining = list.filter(p => !p.done).length;
+    const done      = totalOriginal - remaining;
+    const pct       = totalOriginal > 0 ? Math.round(done / totalOriginal * 100) : 0;
 
-    app.innerHTML = `<div class="list">${remaining.map(p => `
-      <div class="piece-card ${p.done ? 'done' : ''}" data-row="${p.row}" id="card-${p.row}">
-        <div class="thumb" id="thumb-${p.row}">
-          ${p.localPreview
-            ? `<img src="${p.localPreview}">`
-            : '👗'}
-        </div>
-        <div class="piece-info">
-          <div class="piece-id">${p.id}</div>
-          <div class="piece-desc">${p.desc}</div>
-          <div class="piece-meta">${[p.brand, p.size, formatPrice(p.price)].filter(Boolean).join(' · ')}</div>
-        </div>
-        <div class="add-icon" id="icon-${p.row}">
-          ${p.done ? '✓' : '+'}
-        </div>
-      </div>`).join('')}
-    </div>`;
+    document.getElementById('counter-remaining').textContent = remaining;
+    document.getElementById('counter-done-label').textContent = done > 0 ? `· ${done} enviada${done > 1 ? 's' : ''}` : '';
+    document.getElementById('progress-fill').style.width = pct + '%';
+    document.getElementById('counter-block').style.display = mode === 'sem-foto' ? 'block' : 'none';
+  }
 
-    updateCounter();
+  function getClosets() {
+    const closets = [...new Set(allPieces.map(p => p.closet))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    return closets;
+  }
 
-    document.querySelectorAll('.piece-card').forEach(card => {
-      card.addEventListener('click', () => {
-        const row = parseInt(card.dataset.row);
-        activePiece = pieces.find(p => p.row === row);
-        document.getElementById('filePicker').value = '';
-        document.getElementById('filePicker').click();
+  function renderFilter() {
+    const closets = getClosets();
+    const vis = visiblePieces();
+    document.getElementById('closet-filter').innerHTML = [
+      `<button class="filter-chip is-on" data-closet="todos">todas (${vis.length})</button>`,
+      ...closets.map(c => {
+        const count = vis.filter(p => p.closet === c).length;
+        return count > 0
+          ? `<button class="filter-chip" data-closet="${c}">${c} (${count})</button>`
+          : '';
+      })
+    ].filter(Boolean).join('');
+
+    document.querySelectorAll('.filter-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('is-on'));
+        btn.classList.add('is-on');
+        activeCloset = btn.dataset.closet;
+        renderList();
       });
     });
   }
 
-  function formatPrice(raw) {
-    const n = parseFloat(String(raw).replace(/[R$\s"]/g, '').replace(',', '.'));
-    if (isNaN(n)) return '';
-    return 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 0 });
+  function renderList() {
+    const app = document.getElementById('app');
+    const q = searchQuery.toLowerCase();
+    const list = visiblePieces().filter(p =>
+      (activeCloset === 'todos' || p.closet === activeCloset) &&
+      (!q || p.desc.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q) || p.id.toLowerCase().includes(q))
+    );
+
+    if (!list.length) {
+      app.innerHTML = mode === 'sem-foto'
+        ? `<div class="empty">🎉 Todas as peças têm foto!</div>`
+        : `<div class="empty">Nenhuma peça com foto neste closet.</div>`;
+      return;
+    }
+
+    app.innerHTML = `<div class="list">${list.map(p => `
+      <div class="piece-card" data-row="${p.row}" id="card-${p.row}">
+        <div class="thumb" id="thumb-${p.row}">
+          ${p.localPreview ? `<img src="${p.localPreview}">` : p.photoUrl ? `<img src="${p.photoUrl}">` : '👗'}
+        </div>
+        <div class="piece-info">
+          <div class="piece-id">${p.id} · ${p.closet}</div>
+          <div class="piece-desc">${p.desc}</div>
+          <div class="piece-meta">${[p.brand, p.size, formatPrice(p.price)].filter(Boolean).join(' · ')}</div>
+        </div>
+        <div class="add-icon" id="icon-${p.row}">${p.hasPhoto ? '↺' : '+'}</div>
+      </div>`).join('')}</div>`;
+
+    document.querySelectorAll('.piece-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const row = parseInt(card.dataset.row);
+        activePiece = allPieces.find(p => p.row === row);
+        document.getElementById('filePicker').value = '';
+        document.getElementById('filePicker').click();
+      });
+    });
   }
 
   document.getElementById('filePicker').addEventListener('change', async e => {
@@ -206,19 +309,13 @@
     const icon  = document.getElementById('icon-' + piece.row);
     const thumb = document.getElementById('thumb-' + piece.row);
 
-    // Preview local imediato
-    const localUrl = URL.createObjectURL(file);
-    thumb.innerHTML = `<img src="${localUrl}">`;
-    piece.localPreview = localUrl;
-
-    // Spinner no lugar do ícone
+    thumb.innerHTML = `<img src="${URL.createObjectURL(file)}">`;
     card.classList.add('uploading');
     icon.innerHTML = '<div class="spinner"></div>';
 
     try {
       const { base64, mimeType } = await compressImage(file);
-
-      const url = await new Promise((resolve, reject) => {
+      await new Promise((resolve, reject) => {
         google.script.run
           .withSuccessHandler(resolve)
           .withFailureHandler(reject)
@@ -231,18 +328,16 @@
       icon.textContent = '✓';
       showToast(`${piece.id} salvo ✓`);
       updateCounter();
+      renderFilter();
 
-      // Remove o card após 1.5s
       setTimeout(() => {
         card.style.transition = 'opacity 0.3s';
         card.style.opacity = '0';
-        setTimeout(() => card.remove(), 300);
-        const remaining = pieces.filter(p => !p.done);
-        if (!remaining.length) {
-          document.getElementById('app').innerHTML =
-            `<div class="empty">🎉 Todas as peças têm foto!</div>`;
-        }
-      }, 1500);
+        setTimeout(() => {
+          card.remove();
+          if (!document.querySelector('.piece-card')) renderList();
+        }, 300);
+      }, 1200);
 
     } catch (err) {
       card.classList.remove('uploading');
@@ -254,15 +349,37 @@
     }
   });
 
-  // Carrega peças
+  // Busca
+  document.getElementById('search-input').addEventListener('input', e => {
+    searchQuery = e.target.value.trim();
+    renderList();
+  });
+
+  function setMode(m) {
+    mode = m;
+    document.getElementById('btn-sem-foto').classList.toggle('is-on', m === 'sem-foto');
+    document.getElementById('btn-trocar').classList.toggle('is-on', m === 'trocar');
+    activeCloset = 'todos';
+    searchQuery = '';
+    document.getElementById('search-input') && (document.getElementById('search-input').value = '');
+    updateCounter();
+    renderFilter();
+    renderList();
+  }
+
   google.script.run
     .withSuccessHandler(data => {
-      pieces = data;
+      allPieces     = data;
+      totalOriginal = data.filter(p => !p.hasPhoto).length;
+      updateCounter();
+      renderFilter();
       renderList();
+      document.getElementById('gallery-hint').style.display = 'block';
+      document.getElementById('search-wrap').style.display  = 'block';
     })
     .withFailureHandler(err => {
       document.getElementById('app').innerHTML =
-        `<div class="empty">Erro ao carregar peças.<br><small>${err.message}</small></div>`;
+        `<div class="empty">Erro ao carregar.<br><small>${err.message}</small></div>`;
     })
     .getPieces();
 </script>

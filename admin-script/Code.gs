@@ -1,8 +1,8 @@
 // ─── CONFIGURAÇÃO ─────────────────────────────────────────────────────────
-const SHEET_NAME    = 'ESTOQUE';
-const FOLDER_NAME   = 'nao-apego-fotos';
-const HIDDEN_STATUS = ['Pago', 'Cancelado'];
-const ADMIN_PASSWORD = 'naoapego2026'; // troque pela senha que quiser
+const SHEET_NAME     = 'ESTOQUE';
+const FOLDER_NAME    = 'nao-apego-fotos';
+const VISIBLE_STATUS = ['Disponível'];   // só peças disponíveis aparecem no admin
+const ADMIN_PASSWORD = 'naoapego2026';  // troque pela senha que quiser
 // ──────────────────────────────────────────────────────────────────────────
 
 function doGet(e) {
@@ -50,13 +50,14 @@ function getPieces() {
   const headers = data[0].map(h => String(h).trim());
 
   const col = {
-    id:   headers.indexOf('Código'),
-    desc: headers.indexOf('Descritivo Peça'),
-    brand:headers.indexOf('Marca'),
-    size: headers.indexOf('Tamanho'),
-    price:headers.findIndex(h => h === 'Preço Total'),
+    id:     headers.indexOf('Código'),
+    desc:   headers.indexOf('Descritivo Peça'),
+    brand:  headers.indexOf('Marca'),
+    size:   headers.indexOf('Tamanho'),
+    price:  headers.findIndex(h => h === 'Preço Total'),
     status: headers.findIndex(h => h === 'Status'),
-    foto: headers.indexOf('Foto'),
+    foto:   headers.indexOf('Foto'),
+    closet: headers.indexOf('Closet'),
   };
 
   const missing = Object.entries(col).filter(([, v]) => v === -1).map(([k]) => k);
@@ -68,18 +69,23 @@ function getPieces() {
     const status = String(row[col.status] || '').trim();
     const foto   = String(row[col.foto]   || '').trim();
 
-    if (HIDDEN_STATUS.includes(status)) continue;
-    if (foto) continue; // já tem foto
+    if (!VISIBLE_STATUS.includes(status)) continue; // só disponíveis
 
     pieces.push({
-      row:   i + 1,
-      id:    row[col.id]    || '',
-      desc:  row[col.desc]  || '',
-      brand: row[col.brand] || '',
-      size:  row[col.size]  || '',
-      price: row[col.price] || '',
+      row:      i + 1,
+      id:       row[col.id]     || '',
+      desc:     row[col.desc]   || '',
+      brand:    row[col.brand]  || '',
+      size:     row[col.size]   || '',
+      price:    row[col.price]  || '',
+      closet:   row[col.closet] || 'Sem closet',
+      hasPhoto: !!foto,
+      photoUrl: foto ? foto.split('|')[0].trim() : '',
     });
   }
+
+  // Ordena por closet para facilitar o agrupamento no front
+  pieces.sort((a, b) => a.closet.localeCompare(b.closet, 'pt-BR'));
   return pieces;
 }
 
