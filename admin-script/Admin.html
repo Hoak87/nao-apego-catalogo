@@ -134,6 +134,53 @@
       pointer-events: none; white-space: nowrap; z-index: 100;
     }
     .toast.show { opacity: 1; }
+
+    /* ── Nova peça ── */
+    .nova-wrap { padding: 16px; display: none; flex-direction: column; gap: 14px; max-width: 480px; margin: 0 auto; }
+    .nova-wrap.show { display: flex; }
+    .field label { display: block; font-size: 0.72rem; font-weight: 600; color: var(--muted); letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 5px; }
+    .field input, .field select, .field textarea {
+      width: 100%; padding: 10px 12px;
+      border: 1px solid var(--border); border-radius: 8px;
+      font-size: 0.95rem; background: var(--surface); color: var(--text);
+      outline: none; -webkit-appearance: none; font-family: inherit;
+    }
+    .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); }
+    .photo-strip { display: flex; gap: 8px; flex-wrap: wrap; }
+    .photo-strip .ph {
+      width: 72px; height: 96px; border-radius: 8px; overflow: hidden;
+      background: #f0ece8; position: relative; flex-shrink: 0;
+    }
+    .photo-strip .ph img { width: 100%; height: 100%; object-fit: cover; }
+    .photo-strip .ph .rm {
+      position: absolute; top: 3px; right: 3px;
+      width: 20px; height: 20px; border-radius: 50%;
+      background: rgba(0,0,0,0.55); color: #fff; border: none;
+      font-size: 0.75rem; line-height: 1; cursor: pointer;
+    }
+    .photo-add {
+      width: 72px; height: 96px; border: 1.5px dashed var(--border); border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; color: var(--muted); background: none; cursor: pointer;
+      -webkit-tap-highlight-color: transparent; flex-shrink: 0;
+    }
+    .btn {
+      width: 100%; padding: 12px;
+      border: none; border-radius: 8px;
+      font-size: 0.95rem; font-weight: 500; cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn-dark { background: var(--accent); color: #fff; }
+    .btn-outline { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+    .btn:disabled { opacity: 0.45; pointer-events: none; }
+    .ia-note {
+      padding: 10px 12px; background: #f0f7ff; border: 1px solid #cce0ff;
+      border-radius: 8px; font-size: 0.8rem; color: #3a6ea8; line-height: 1.45;
+      display: none;
+    }
+    .ia-note.show { display: block; }
+    .nova-hint { font-size: 0.75rem; color: var(--muted); line-height: 1.4; }
   </style>
 </head>
 <body>
@@ -144,6 +191,7 @@
     <div style="display:flex;gap:6px;">
       <button class="filter-chip is-on" id="btn-sem-foto" onclick="setMode('sem-foto')">sem foto</button>
       <button class="filter-chip" id="btn-trocar" onclick="setMode('trocar')">trocar foto</button>
+      <button class="filter-chip" id="btn-nova" onclick="setMode('nova')">➕ nova</button>
     </div>
   </div>
   <div class="counter-block" id="counter-block" style="display:none;">
@@ -168,7 +216,43 @@
   <div class="loading-state">carregando peças…</div>
 </div>
 
+<!-- ── Cadastro de nova peça ── -->
+<div class="nova-wrap" id="nova-wrap">
+  <div class="nova-hint">
+    📷 Tire fotos da peça (frente e verso) e <strong>da etiqueta interna</strong> — é dela que a IA lê a marca e o tamanho.
+  </div>
+
+  <div class="field">
+    <label>Closet</label>
+    <select id="nova-closet"></select>
+    <input id="nova-closet-outro" type="text" placeholder="nome do closet" style="display:none;margin-top:8px;" />
+  </div>
+
+  <div class="field">
+    <label>Fotos</label>
+    <div class="photo-strip" id="nova-photos">
+      <button class="photo-add" id="nova-photo-add">+</button>
+    </div>
+  </div>
+
+  <button class="btn btn-outline" id="nova-analyze" disabled>✨ Analisar com IA</button>
+  <div class="ia-note" id="nova-obs"></div>
+
+  <div class="field"><label>Descritivo</label><input id="nova-desc" type="text" placeholder="ex: Vestido Midi Floral" /></div>
+  <div style="display:flex;gap:10px;">
+    <div class="field" style="flex:1;"><label>Marca</label><input id="nova-marca" type="text" /></div>
+    <div class="field" style="width:90px;"><label>Tamanho</label><input id="nova-tam" type="text" /></div>
+  </div>
+  <div style="display:flex;gap:10px;">
+    <div class="field" style="flex:1;"><label>Cor</label><input id="nova-cor" type="text" /></div>
+    <div class="field" style="flex:1;"><label>Preço (R$)</label><input id="nova-preco" type="text" inputmode="decimal" placeholder="0,00" /></div>
+  </div>
+
+  <button class="btn btn-dark" id="nova-save" disabled>Salvar no catálogo</button>
+</div>
+
 <input type="file" id="filePicker" accept="image/*" />
+<input type="file" id="novaPicker" accept="image/*" multiple />
 <div class="toast" id="toast"></div>
 
 <script>
@@ -359,6 +443,19 @@
     mode = m;
     document.getElementById('btn-sem-foto').classList.toggle('is-on', m === 'sem-foto');
     document.getElementById('btn-trocar').classList.toggle('is-on', m === 'trocar');
+    document.getElementById('btn-nova').classList.toggle('is-on', m === 'nova');
+
+    const isNova = m === 'nova';
+    document.getElementById('nova-wrap').classList.toggle('show', isNova);
+    document.getElementById('app').style.display = isNova ? 'none' : 'block';
+    document.getElementById('closet-filter').style.display = isNova ? 'none' : 'flex';
+    document.getElementById('gallery-hint').style.display = isNova ? 'none' : 'block';
+    document.getElementById('search-wrap').style.display = isNova ? 'none' : 'block';
+    if (isNova) {
+      document.getElementById('counter-block').style.display = 'none';
+      return;
+    }
+
     activeCloset = 'todos';
     searchQuery = '';
     document.getElementById('search-input') && (document.getElementById('search-input').value = '');
@@ -367,6 +464,144 @@
     renderList();
   }
 
+  // ── Cadastro de nova peça ──────────────────────────────────
+  const nova = { photos: [], saving: false };
+
+  function populateClosetSelect() {
+    const sel = document.getElementById('nova-closet');
+    const closets = getClosets();
+    sel.innerHTML =
+      '<option value="" disabled selected>selecione…</option>' +
+      closets.map(c => `<option value="${c}">${c}</option>`).join('') +
+      '<option value="__outro__">outro closet…</option>';
+  }
+
+  document.getElementById('nova-closet').addEventListener('change', e => {
+    document.getElementById('nova-closet-outro').style.display =
+      e.target.value === '__outro__' ? 'block' : 'none';
+    updateNovaButtons();
+  });
+
+  function novaClosetValue() {
+    const sel = document.getElementById('nova-closet').value;
+    if (sel === '__outro__') return document.getElementById('nova-closet-outro').value.trim();
+    return sel;
+  }
+
+  function updateNovaButtons() {
+    document.getElementById('nova-analyze').disabled = !nova.photos.length || nova.saving;
+    const preco = document.getElementById('nova-preco').value.trim();
+    const desc  = document.getElementById('nova-desc').value.trim();
+    document.getElementById('nova-save').disabled =
+      !nova.photos.length || !novaClosetValue() || !desc || !preco || nova.saving;
+  }
+
+  ['nova-preco', 'nova-desc', 'nova-closet-outro'].forEach(id =>
+    document.getElementById(id).addEventListener('input', updateNovaButtons));
+
+  function renderNovaPhotos() {
+    const strip = document.getElementById('nova-photos');
+    strip.innerHTML = nova.photos.map((p, i) => `
+      <div class="ph"><img src="${p.previewUrl}"><button class="rm" data-i="${i}">✕</button></div>
+    `).join('') + '<button class="photo-add" id="nova-photo-add">+</button>';
+
+    strip.querySelectorAll('.rm').forEach(btn =>
+      btn.addEventListener('click', () => {
+        nova.photos.splice(parseInt(btn.dataset.i), 1);
+        renderNovaPhotos();
+        updateNovaButtons();
+      }));
+    document.getElementById('nova-photo-add').addEventListener('click', () => {
+      document.getElementById('novaPicker').value = '';
+      document.getElementById('novaPicker').click();
+    });
+  }
+
+  document.getElementById('nova-photo-add').addEventListener('click', () => {
+    document.getElementById('novaPicker').value = '';
+    document.getElementById('novaPicker').click();
+  });
+
+  document.getElementById('novaPicker').addEventListener('change', async e => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    for (const file of files) {
+      try {
+        const { base64, mimeType } = await compressImage(file);
+        nova.photos.push({ base64, mimeType, previewUrl: URL.createObjectURL(file) });
+      } catch (err) {
+        showToast('Erro ao processar uma foto.');
+      }
+    }
+    renderNovaPhotos();
+    updateNovaButtons();
+  });
+
+  document.getElementById('nova-analyze').addEventListener('click', () => {
+    const btn = document.getElementById('nova-analyze');
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner"></div> analisando…';
+
+    google.script.run
+      .withSuccessHandler(res => {
+        if (res.descritivo) document.getElementById('nova-desc').value  = res.descritivo;
+        if (res.marca)      document.getElementById('nova-marca').value = res.marca;
+        if (res.tamanho)    document.getElementById('nova-tam').value   = res.tamanho;
+        if (res.cor)        document.getElementById('nova-cor').value   = res.cor;
+        const obs = document.getElementById('nova-obs');
+        if (res.observacoes) { obs.textContent = '💡 ' + res.observacoes; obs.classList.add('show'); }
+        btn.innerHTML = '✨ Analisar com IA';
+        updateNovaButtons();
+        showToast('Confira os campos e ajuste se precisar ✓');
+      })
+      .withFailureHandler(err => {
+        btn.innerHTML = '✨ Analisar com IA';
+        updateNovaButtons();
+        showToast('IA indisponível — preencha manualmente.');
+        console.error(err);
+      })
+      .analyzeNewPiece(nova.photos.map(p => ({ base64: p.base64, mimeType: p.mimeType })));
+  });
+
+  document.getElementById('nova-save').addEventListener('click', () => {
+    const btn = document.getElementById('nova-save');
+    nova.saving = true;
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner" style="border-top-color:#fff;"></div> salvando…';
+
+    const payload = {
+      closet: novaClosetValue(),
+      marca:  document.getElementById('nova-marca').value.trim(),
+      descritivo: document.getElementById('nova-desc').value.trim(),
+      tamanho: document.getElementById('nova-tam').value.trim(),
+      cor:    document.getElementById('nova-cor').value.trim(),
+      preco:  document.getElementById('nova-preco').value.trim(),
+      fotos:  nova.photos.map(p => ({ base64: p.base64, mimeType: p.mimeType })),
+    };
+
+    google.script.run
+      .withSuccessHandler(codigo => {
+        nova.saving = false;
+        nova.photos = [];
+        renderNovaPhotos();
+        ['nova-desc','nova-marca','nova-tam','nova-cor','nova-preco'].forEach(id =>
+          document.getElementById(id).value = '');
+        const obs = document.getElementById('nova-obs');
+        obs.textContent = ''; obs.classList.remove('show');
+        btn.innerHTML = 'Salvar no catálogo';
+        updateNovaButtons();
+        showToast(`${codigo} cadastrada no catálogo ✓`, 3500);
+      })
+      .withFailureHandler(err => {
+        nova.saving = false;
+        btn.innerHTML = 'Salvar no catálogo';
+        updateNovaButtons();
+        showToast('Erro: ' + (err.message || 'tente novamente'), 4000);
+        console.error(err);
+      })
+      .createPiece(payload);
+  });
+
   google.script.run
     .withSuccessHandler(data => {
       allPieces     = data;
@@ -374,6 +609,7 @@
       updateCounter();
       renderFilter();
       renderList();
+      populateClosetSelect();
       document.getElementById('gallery-hint').style.display = 'block';
       document.getElementById('search-wrap').style.display  = 'block';
     })

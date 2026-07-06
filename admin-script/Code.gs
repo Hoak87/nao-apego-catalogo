@@ -113,3 +113,166 @@ function getOrCreateFolder() {
   const it = DriveApp.getFoldersByName(FOLDER_NAME);
   return it.hasNext() ? it.next() : DriveApp.createFolder(FOLDER_NAME);
 }
+
+// ─── CADASTRO DE PEÇAS COM IA ─────────────────────────────────────────────
+// Chave em: Extensões → Apps Script → Configurações do projeto →
+// Propriedades do script → ANTHROPIC_API_KEY
+const ANTHROPIC_MODEL = 'claude-haiku-4-5';
+
+const ANALYZE_PROMPT =
+  'Você está analisando fotos de uma peça de moda feminina de brechó para cadastro em catálogo. ' +
+  'As fotos podem incluir a peça (frente/verso) e a etiqueta interna com marca e tamanho.\n\n' +
+  'Retorne:\n' +
+  '- marca: o nome da marca lido na etiqueta. Se nenhuma etiqueta de marca estiver visível, retorne string vazia — NUNCA chute.\n' +
+  '- descritivo: nome curto da peça começando pelo tipo, com iniciais maiúsculas. ' +
+  'O tipo deve ser uma destas palavras: Vestido, Blusa, Camiseta, Camisa, Top, Body, Calça, Saia, Shorts, Macacão, ' +
+  'Casaco, Jaqueta, Blazer, Colete, Tricô, Bota, Sandália, Sapato, Tênis, Bolsa, Acessório. ' +
+  'Exemplos: "Vestido Midi Floral", "Calça Jeans Cintura Alta", "Blusa Ajuste Frontal".\n' +
+  '- tamanho: lido na etiqueta (PP, P, M, G, GG ou numérico como 36, 38). Se não visível, string vazia — NUNCA chute.\n' +
+  '- cor: cor predominante em português, no feminino quando aplicável. ' +
+  'Exemplos: Preta, Branca, Off-white, Bege, Rosa, Vermelha, Laranja, Amarela, Verde, Azul, Jeans, Cinza, Marrom, Roxa, Dourada, Estampada, Animal Print.\n' +
+  '- observacoes: detalhes úteis para a lojista revisar: material aparente, estado, detalhes de modelagem, avisos (ex: "etiqueta de tamanho não visível").';
+
+const ANALYZE_SCHEMA = {
+  type: 'object',
+  properties: {
+    marca:       { type: 'string' },
+    descritivo:  { type: 'string' },
+    tamanho:     { type: 'string' },
+    cor:         { type: 'string' },
+    observacoes: { type: 'string' },
+  },
+  required: ['marca', 'descritivo', 'tamanho', 'cor', 'observacoes'],
+  additionalProperties: false,
+};
+
+// Analisa as fotos com o Claude e retorna {marca, descritivo, tamanho, cor, observacoes}
+function analyzeNewPiece(photos) {
+  const apiKey = PropertiesService.getScriptProperties().getProperty('ANTHROPIC_API_KEY');
+  if (!apiKey) throw new Error('Chave da IA não configurada. Adicione ANTHROPIC_API_KEY nas Propriedades do script.');
+
+  const content = photos.map(p => ({
+    type: 'image',
+    source: { type: 'base64', media_type: p.mimeType, data: p.base64 },
+  }));
+  content.push({ type: 'text', text: ANALYZE_PROMPT });
+
+  const resp = UrlFetchApp.fetch('https://api.anthropic.com/v1/messages', {
+    method: 'post',
+    contentType: 'application/json',
+    headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+    payload: JSON.stringify({
+      model: ANTHROPIC_MODEL,
+      max_tokens: 1024,
+      output_config: { format: { type: 'json_schema', schema: ANALYZE_SCHEMA } },
+      messages: [{ role: 'user', content: content }],
+    }),
+    muteHttpExceptions: true,
+  });
+
+  const code = resp.getResponseCode();
+  const body = JSON.parse(resp.getContentText());
+  if (code !== 200) {
+    throw new Error('Erro na análise (' + code + '): ' + ((body.error && body.error.message) || 'desconhecido'));
+  }
+  const text = (body.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
+  return JSON.parse(text);
+}
+
+// Prefixo do código a partir das iniciais do closet: "Bea Romano" → BR
+function _closetPrefix(closet) {
+  const clean = String(closet).normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  const words = clean.split(/\s+/).filter(Boolean);
+  const prefix = words.length >= 2 ? words[0][0] + words[1][0] : clean.substring(0, 2);
+  return prefix.toUpperCase();
+}
+
+// Cria a peça: gera código, sobe fotos, grava no ESTOQUE e no CATALOGO.
+// data: {closet, marca, descritivo, tamanho, cor, preco, fotos: [{base64, mimeType}]}
+function createPiece(data) {
+  if (!data.closet) throw new Error('Closet é obrigatório.');
+  if (!data.descritivo) throw new Error('Descritivo é obrigatório.');
+  const preco = parseFloat(String(data.preco).replace(',', '.'));
+  if (isNaN(preco) || preco <= 0) throw new Error('Preço inválido.');
+  if (!data.fotos || !data.fotos.length) throw new Error('Adicione pelo menos uma foto.');
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const estoque = ss.getSheetByName(SHEET_NAME);
+    const headers = estoque.getRange(1, 1, 1, estoque.getLastColumn()).getValues()[0].map(h => String(h).trim());
+    const colOf = name => headers.indexOf(name);
+
+    // ── Código: PREFIXO + AAMM + sequência de 3 dígitos ──
+    const yymm = Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), 'yyMM');
+    const prefix = _closetPrefix(data.closet) + yymm;
+    const lastRow = estoque.getLastRow();
+    const codes = lastRow > 1
+      ? estoque.getRange(2, colOf('Código') + 1, lastRow - 1, 1).getValues().flat().map(String)
+      : [];
+    let seq = 0;
+    codes.forEach(c => {
+      if (c.indexOf(prefix) === 0) {
+        const n = parseInt(c.substring(prefix.length), 10);
+        if (!isNaN(n) && n > seq) seq = n;
+      }
+    });
+    const codigo = prefix + ('00' + (seq + 1)).slice(-3);
+
+    // ── Fotos no Drive ──
+    const folder = getOrCreateFolder();
+    const urls = data.fotos.map((f, i) => {
+      const ext = f.mimeType.split('/')[1].replace('jpeg', 'jpg');
+      const blob = Utilities.newBlob(Utilities.base64Decode(f.base64), f.mimeType, codigo + '-' + (i + 1) + '.' + ext);
+      const file = folder.createFile(blob);
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      return 'https://drive.google.com/thumbnail?id=' + file.getId() + '&sz=w800';
+    });
+    const fotoStr = urls.join('|');
+
+    // ── Linha no ESTOQUE ──
+    const estValues = {
+      'Código': codigo,
+      'Marca': data.marca || '',
+      'Descritivo Peça': data.descritivo,
+      'Tamanho': data.tamanho || '',
+      'Cor': data.cor || '',
+      'Status': 'Disponível',
+      'Preço Total': preco,
+      'Data Entrada': new Date(),
+      'Closet': data.closet,
+      'Foto': fotoStr,
+    };
+    estoque.appendRow(headers.map(h => estValues[h] !== undefined ? estValues[h] : ''));
+
+    // ── Linha no CATALOGO (mesmo formato do gerarCatalogo) ──
+    const catalogo = ss.getSheetByName('CATALOGO');
+    if (catalogo && catalogo.getLastRow() >= 1) {
+      const catHead = catalogo.getRange(1, 1, 1, catalogo.getLastColumn()).getValues()[0].map(h => String(h).trim());
+      const catValues = {
+        'Código': codigo,
+        'Marca': data.marca || '',
+        'Descritivo Peça': data.descritivo,
+        'Tamanho': data.tamanho || '',
+        'Cor': data.cor || '',
+        'Status': 'Disponível',
+        'Data Entrada': new Date(),
+        'Closet': data.closet,
+        'Tipo Closet': 'Open',
+        'Foto': fotoStr,
+        'Preço Original': preco,
+        'Sugestão Drop 02': Math.round(preco * 0.8 / 10) * 10,
+        'Sugestão Desapego Final': Math.round(preco * 0.6 / 10) * 10,
+        'Preço Atual': preco,
+        'Drop Atual': 'Drop 01',
+        'Status Drop': '✓ ok',
+      };
+      catalogo.appendRow(catHead.map(h => catValues[h] !== undefined ? catValues[h] : ''));
+    }
+
+    return codigo;
+  } finally {
+    lock.releaseLock();
+  }
+}
