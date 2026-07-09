@@ -128,6 +128,56 @@ function getOrCreateFolder() {
   return it.hasNext() ? it.next() : DriveApp.createFolder(FOLDER_NAME);
 }
 
+// Sobe as fotos e já deixa compartilhadas, tudo em paralelo (UrlFetchApp.fetchAll direto
+// na Drive API v3) — antes eram 2 chamadas sequenciais por foto (createFile + setSharing),
+// o maior motivo do cadastro demorar ~30s com 2-3 fotos.
+function _uploadPhotosParallel_(folder, photos, codigo) {
+  const token = ScriptApp.getOAuthToken();
+  const boundary = 'naoapego' + new Date().getTime();
+  const nl = '\r\n';
+
+  const uploadReqs = photos.map((f, i) => {
+    const ext = f.mimeType.split('/')[1].replace('jpeg', 'jpg');
+    const metadata = { name: codigo + '-' + (i + 1) + '.' + ext, parents: [folder.getId()] };
+    const head = '--' + boundary + nl +
+      'Content-Type: application/json; charset=UTF-8' + nl + nl +
+      JSON.stringify(metadata) + nl +
+      '--' + boundary + nl +
+      'Content-Type: ' + f.mimeType + nl + nl;
+    const tail = nl + '--' + boundary + '--';
+    const payload = Utilities.newBlob(head).getBytes()
+      .concat(Utilities.base64Decode(f.base64), Utilities.newBlob(tail).getBytes());
+
+    return {
+      url: 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
+      method: 'post',
+      contentType: 'multipart/related; boundary=' + boundary,
+      headers: { Authorization: 'Bearer ' + token },
+      payload: payload,
+      muteHttpExceptions: true,
+    };
+  });
+
+  const uploadResps = UrlFetchApp.fetchAll(uploadReqs);
+  const fileIds = uploadResps.map(r => {
+    const body = JSON.parse(r.getContentText());
+    if (!body.id) throw new Error('Falha ao subir foto: ' + r.getContentText());
+    return body.id;
+  });
+
+  const permReqs = fileIds.map(id => ({
+    url: 'https://www.googleapis.com/drive/v3/files/' + id + '/permissions',
+    method: 'post',
+    contentType: 'application/json',
+    headers: { Authorization: 'Bearer ' + token },
+    payload: JSON.stringify({ role: 'reader', type: 'anyone' }),
+    muteHttpExceptions: true,
+  }));
+  UrlFetchApp.fetchAll(permReqs);
+
+  return fileIds.map(id => 'https://drive.google.com/thumbnail?id=' + id + '&sz=w800');
+}
+
 // ─── CADASTRO DE PEÇAS COM IA ─────────────────────────────────────────────
 // Chave em: Extensões → Apps Script → Configurações do projeto →
 // Propriedades do script → ANTHROPIC_API_KEY
@@ -401,15 +451,9 @@ function createPiece(data) {
       }
     }
 
-    // ── Fotos no Drive ──
+    // ── Fotos no Drive (upload + compartilhamento em paralelo) ──
     const folder = getOrCreateFolder();
-    const urls = data.fotos.map((f, i) => {
-      const ext = f.mimeType.split('/')[1].replace('jpeg', 'jpg');
-      const blob = Utilities.newBlob(Utilities.base64Decode(f.base64), f.mimeType, codigo + '-' + (i + 1) + '.' + ext);
-      const file = folder.createFile(blob);
-      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-      return 'https://drive.google.com/thumbnail?id=' + file.getId() + '&sz=w800';
-    });
+    const urls = _uploadPhotosParallel_(folder, data.fotos, codigo);
     const fotoStr = urls.join('|');
 
     // ── Linha no ESTOQUE (escrita na linha real seguinte, não no getLastRow() do sheet) ──
