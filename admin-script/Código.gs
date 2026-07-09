@@ -287,6 +287,19 @@ function _closetPrefix(closet) {
 
 // Cria a peça: gera código, sobe fotos, grava no ESTOQUE e no CATALOGO.
 // data: {closet, marca, descritivo, tamanho, cor, preco, fotos: [{base64, mimeType}]}
+// Acha a última linha REAL de dados pela coluna Código, em vez de confiar em
+// getLastRow()/appendRow() — o ESTOQUE tem formatação/validação residual bem
+// abaixo dos dados que infla o "último uso" do sheet e fazia appendRow() gravar
+// milhares de linhas depois do fim de verdade (e também deixava tudo mais lento).
+function _lastDataRow_(sheet, codigoColIndex) {
+  const sheetLastRow = sheet.getLastRow();
+  if (sheetLastRow < 2) return { lastRow: 1, codigoValues: [] };
+  const codigoValues = sheet.getRange(2, codigoColIndex + 1, sheetLastRow - 1, 1).getValues().flat().map(String);
+  let lastRow = 1;
+  codigoValues.forEach((c, i) => { if (c.trim()) lastRow = i + 2; });
+  return { lastRow: lastRow, codigoValues: codigoValues };
+}
+
 function createPiece(data) {
   if (!data.closet) throw new Error('Closet é obrigatório.');
   if (!data.descritivo) throw new Error('Descritivo é obrigatório.');
@@ -302,13 +315,11 @@ function createPiece(data) {
     const headers = estoque.getRange(1, 1, 1, estoque.getLastColumn()).getValues()[0].map(h => String(h).trim());
     const colOf = name => headers.indexOf(name);
 
+    const { lastRow: estLastDataRow, codigoValues: codes } = _lastDataRow_(estoque, colOf('Código'));
+
     // ── Código: PREFIXO + AAMM + sequência de 3 dígitos ──
     const yymm = Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), 'yyMM');
     const prefix = _closetPrefix(data.closet) + yymm;
-    const lastRow = estoque.getLastRow();
-    const codes = lastRow > 1
-      ? estoque.getRange(2, colOf('Código') + 1, lastRow - 1, 1).getValues().flat().map(String)
-      : [];
     let seq = 0;
     codes.forEach(c => {
       if (c.indexOf(prefix) === 0) {
@@ -317,6 +328,21 @@ function createPiece(data) {
       }
     });
     const codigo = prefix + ('00' + (seq + 1)).slice(-3);
+
+    // ── Repasse/Comissão: herda a mesma % já usada por esse closet; padrão 60/40 se for closet novo ──
+    const repasseCol  = colOf('Repasse');
+    const comissaoCol = colOf('Comissão');
+    const closetCol   = colOf('Closet');
+    let split = { repasse: 0.6, comissao: 0.4 };
+    if (repasseCol > -1 && comissaoCol > -1 && closetCol > -1 && estLastDataRow > 1) {
+      const rows = estoque.getRange(2, 1, estLastDataRow - 1, estoque.getLastColumn()).getValues();
+      for (let i = rows.length - 1; i >= 0; i--) {
+        if (String(rows[i][closetCol]).trim() === data.closet) {
+          split = { repasse: rows[i][repasseCol], comissao: rows[i][comissaoCol] };
+          break;
+        }
+      }
+    }
 
     // ── Fotos no Drive ──
     const folder = getOrCreateFolder();
@@ -329,7 +355,7 @@ function createPiece(data) {
     });
     const fotoStr = urls.join('|');
 
-    // ── Linha no ESTOQUE ──
+    // ── Linha no ESTOQUE (escrita na linha real seguinte, não no getLastRow() do sheet) ──
     const estValues = {
       'Código': codigo,
       'Marca': data.marca || '',
@@ -341,13 +367,19 @@ function createPiece(data) {
       'Data Entrada': new Date(),
       'Closet': data.closet,
       'Foto': fotoStr,
+      'Repasse': split.repasse,
+      'Comissão': split.comissao,
     };
-    estoque.appendRow(headers.map(h => estValues[h] !== undefined ? estValues[h] : ''));
+    const estRow = headers.map(h => estValues[h] !== undefined ? estValues[h] : '');
+    estoque.getRange(estLastDataRow + 1, 1, 1, estRow.length).setValues([estRow]);
+    if (repasseCol > -1)  estoque.getRange(estLastDataRow + 1, repasseCol + 1).setNumberFormat('0%');
+    if (comissaoCol > -1) estoque.getRange(estLastDataRow + 1, comissaoCol + 1).setNumberFormat('0%');
 
-    // ── Linha no CATALOGO (mesmo formato do gerarCatalogo) ──
+    // ── Linha no CATALOGO (mesmo formato do gerarCatalogo) — sem dados financeiros ──
     const catalogo = ss.getSheetByName('CATALOGO');
     if (catalogo && catalogo.getLastRow() >= 1) {
       const catHead = catalogo.getRange(1, 1, 1, catalogo.getLastColumn()).getValues()[0].map(h => String(h).trim());
+      const { lastRow: catLastDataRow } = _lastDataRow_(catalogo, catHead.indexOf('Código'));
       const catValues = {
         'Código': codigo,
         'Marca': data.marca || '',
@@ -366,7 +398,8 @@ function createPiece(data) {
         'Drop Atual': 'Drop 01',
         'Status Drop': '✓ ok',
       };
-      catalogo.appendRow(catHead.map(h => catValues[h] !== undefined ? catValues[h] : ''));
+      const catRow = catHead.map(h => catValues[h] !== undefined ? catValues[h] : '');
+      catalogo.getRange(catLastDataRow + 1, 1, 1, catRow.length).setValues([catRow]);
     }
 
     return codigo;
