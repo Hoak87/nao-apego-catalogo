@@ -2,56 +2,107 @@
 const SHEET_NAME     = 'ESTOQUE';
 const FOLDER_NAME    = 'nao-apego-fotos';
 const VISIBLE_STATUS = ['Disponível'];   // só peças disponíveis aparecem no admin
-const ADMIN_PASSWORD = 'naoapego2026';  // troque pela senha que quiser
+// A senha do admin fica em Propriedades do script (ADMIN_PASSWORD) — nunca no
+// código, porque este repositório é público no GitHub.
 // ──────────────────────────────────────────────────────────────────────────
 
-// TEMP — debug do bug "peça não salva na planilha". Remover depois.
-function debugInfoBackend() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(SHEET_NAME);
-  const lastRow = sheet.getLastRow();
-  const lastRowData = lastRow > 1 ? sheet.getRange(lastRow, 1, 1, sheet.getLastColumn()).getValues()[0] : [];
-  return {
-    ssId: ss.getId(),
-    ssUrl: ss.getUrl(),
-    estoqueLastRow: lastRow,
-    estoqueLastRowData: lastRowData,
-  };
+// ─── PROTEÇÃO CONTRA FORÇA BRUTA NA SENHA ──────────────────────────────────
+// O admin não tem sessão/IP pra bloquear por usuário (limitação do Apps Script
+// como web app), então o controle é global: poucas tentativas erradas bloqueiam
+// o login pra todo mundo por alguns minutos, e cada tentativa errada já sofre
+// um atraso — torna inviável testar senhas em massa.
+const LOGIN_MAX_TENTATIVAS     = 5;
+const LOGIN_JANELA_SEGUNDOS    = 600;  // tentativas contam por 10 min
+const LOGIN_BLOQUEIO_SEGUNDOS  = 300;  // bloqueio de 5 min ao estourar o limite
+
+function _loginBloqueado_() {
+  return !!CacheService.getScriptCache().get('login_bloqueado');
+}
+
+function _registrarTentativaFalha_() {
+  const cache = CacheService.getScriptCache();
+  const tentativas = (parseInt(cache.get('login_tentativas'), 10) || 0) + 1;
+  cache.put('login_tentativas', String(tentativas), LOGIN_JANELA_SEGUNDOS);
+  if (tentativas >= LOGIN_MAX_TENTATIVAS) {
+    cache.put('login_bloqueado', '1', LOGIN_BLOQUEIO_SEGUNDOS);
+  }
+}
+
+function _limparTentativasLogin_() {
+  const cache = CacheService.getScriptCache();
+  cache.remove('login_tentativas');
+  cache.remove('login_bloqueado');
 }
 
 function doGet(e) {
   const pwd = (e && e.parameter && e.parameter.pwd) || '';
+  const senhaConfigurada = PropertiesService.getScriptProperties().getProperty('ADMIN_PASSWORD') || '';
 
-  if (pwd !== ADMIN_PASSWORD) {
+  if (_loginBloqueado_()) {
     return HtmlService
-      .createHtmlOutput(loginHtml())
+      .createHtmlOutput(loginHtml(false, true))
       .setTitle('não apego')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
   }
 
+  if (!senhaConfigurada || pwd !== senhaConfigurada) {
+    if (pwd) {
+      Utilities.sleep(1500); // atrasa força bruta — cada tentativa errada custa 1,5s
+      _registrarTentativaFalha_();
+    }
+    return HtmlService
+      .createHtmlOutput(loginHtml(!!pwd, false))
+      .setTitle('não apego')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
+  }
+
+  _limparTentativasLogin_();
   return HtmlService
     .createHtmlOutputFromFile('Admin')
     .setTitle('não apego — gestão')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1.0, maximum-scale=1.0');
 }
 
-function loginHtml() {
-  return '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">' +
-    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
-    '<style>*{box-sizing:border-box;margin:0;padding:0}' +
+// erro = true quando o usuário acabou de tentar uma senha e ela veio errada
+// (dá pra saber porque "pwd" está presente na URL, mesmo que tenha falhado).
+function loginHtml(erro, bloqueado) {
+  const estilo = '<style>*{box-sizing:border-box;margin:0;padding:0}' +
     'body{background:#F2F0EB;font-family:-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}' +
     '.box{background:#fff;border:1px solid #D8D2C4;border-radius:12px;padding:36px 24px;width:100%;max-width:300px;text-align:center}' +
     '.logo{font-size:1.1rem;font-weight:800;letter-spacing:-0.03em;text-transform:lowercase;margin-bottom:28px;color:#121110}' +
-    'input{width:100%;padding:10px 14px;border:1px solid #D8D2C4;border-radius:8px;font-size:1rem;outline:none;margin-bottom:12px}' +
+    '.pwd-wrap{position:relative;margin-bottom:12px}' +
+    'input{width:100%;padding:10px 40px 10px 14px;border:1px solid #D8D2C4;border-radius:8px;font-size:1rem;outline:none;box-sizing:border-box}' +
     'input:focus{border-color:#B14A2C}' +
-    'button{width:100%;padding:11px;background:#121110;color:#F2F0EB;border:none;border-radius:8px;font-size:.95rem;cursor:pointer}' +
-    '.err{color:#e74c3c;font-size:.82rem;margin-top:10px;display:none}</style></head>' +
-    '<body><div class="box"><div class="logo">não apego</div>' +
-    '<form id="f"><input type="password" id="pwd" placeholder="senha" autofocus/>' +
+    '.eye{position:absolute;right:2px;top:2px;bottom:2px;background:none;border:none;cursor:pointer;padding:0 10px;font-size:1rem;color:#8B8278;line-height:1}' +
+    'button[type=submit]{width:100%;padding:11px;background:#121110;color:#F2F0EB;border:none;border-radius:8px;font-size:.95rem;cursor:pointer}' +
+    '.err{color:#e74c3c;font-size:.82rem;margin-top:10px;display:none}.err.show{display:block}' +
+    '.aviso{font-size:.85rem;color:#3A3632;line-height:1.5}' +
+    '@keyframes shake{10%,90%{transform:translateX(-1px)}20%,80%{transform:translateX(2px)}30%,50%,70%{transform:translateX(-4px)}40%,60%{transform:translateX(4px)}}' +
+    '.shake{animation:shake .4s}' +
+    '</style>';
+
+  if (bloqueado) {
+    return '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">' +
+      '<meta name="viewport" content="width=device-width,initial-scale=1">' + estilo + '</head>' +
+      '<body><div class="box"><div class="logo">não apego</div>' +
+      '<div class="aviso">Muitas tentativas de senha incorreta.<br>Aguarde alguns minutos e tente de novo.</div>' +
+      '</div></body></html>';
+  }
+
+  return '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">' +
+    '<meta name="viewport" content="width=device-width,initial-scale=1">' + estilo + '</head>' +
+    '<body><div class="box" id="box"><div class="logo">não apego</div>' +
+    '<form id="f">' +
+    '<div class="pwd-wrap"><input type="password" id="pwd" placeholder="senha" autofocus autocomplete="current-password"/>' +
+    '<button type="button" class="eye" id="eye">👁️</button></div>' +
     '<button type="submit">entrar</button>' +
-    '<div class="err" id="err">senha incorreta</div></form></div>' +
+    '<div class="err' + (erro ? ' show' : '') + '" id="err">senha incorreta</div>' +
+    '</form></div>' +
     '<script>' +
-    'if(location.search.includes("wrong=1"))document.getElementById("err").style.display="block";' +
+    (erro ? 'document.getElementById("box").classList.add("shake");document.getElementById("pwd").value="";' : '') +
+    'document.getElementById("eye").addEventListener("click",function(){' +
+    'var i=document.getElementById("pwd");var show=i.type==="password";' +
+    'i.type=show?"text":"password";this.textContent=show?"🙈":"👁️";i.focus();});' +
     'document.getElementById("f").addEventListener("submit",function(e){' +
     'e.preventDefault();var p=document.getElementById("pwd").value;if(!p)return;' +
     'location.href=location.href.split("?")[0]+"?pwd="+encodeURIComponent(p);})' +
