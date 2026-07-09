@@ -3,196 +3,277 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-  <title>não apego — fotos</title>
+  <title>não apego — gestão</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --bg: #fafaf8; --surface: #fff; --border: #e8e4df;
-      --text: #1a1a1a; --muted: #8a8580; --accent: #2d2d2d;
-      --green: #25d366;
+      /* ── tokens copiados do index.html (site público) ── */
+      --bg: #F2F0EB; --bg-2: #E8E4DB; --card: #fff; --line: #D8D2C4;
+      --ink: #121110; --ink-2: #3A3632; --mute: #8B8278;
+      --accent: #B14A2C; --accent-2: #D9A441;
+      /* estado semântico — não faz parte da paleta do site, é intencional */
+      --success: #25d366;
     }
-    body { background: var(--bg); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: var(--text); padding-bottom: 40px; }
+    body { background: var(--bg); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: var(--ink); padding-bottom: 40px; }
 
     /* ── Header ── */
-    header {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 14px 16px 0;
-      position: sticky; top: 0; z-index: 10;
+    #app-header {
+      background: var(--card);
+      border-bottom: 1px solid var(--line);
+      padding: 14px 16px;
+      position: sticky; top: 0; z-index: 20;
     }
-    .header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-    .logo { font-size: 1rem; font-weight: 300; letter-spacing: 0.18em; }
+    .wordmark { font-size: 1.2rem; font-weight: 800; letter-spacing: -0.03em; text-transform: lowercase; display: flex; align-items: baseline; }
+    .wordmark .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); display: inline-block; margin: 0 7px 2px; }
+    .wordmark .suffix { font-weight: 400; color: var(--mute); font-size: .7em; letter-spacing: 0; margin-left: 2px; }
+    .greeting { font-size: .85rem; color: var(--ink-2); margin-top: 4px; }
+    .greeting b { font-weight: 700; }
+    .back-btn { background: none; border: none; font: inherit; font-size: .85rem; font-weight: 600; color: var(--ink); cursor: pointer; padding: 2px 0; display: flex; align-items: center; gap: 4px; -webkit-tap-highlight-color: transparent; }
+    .view-title { font-size: 1.05rem; font-weight: 700; margin-top: 6px; letter-spacing: -0.01em; }
 
-    /* ── Contador ── */
-    .counter-block { margin-bottom: 12px; }
+    /* ── Views ── */
+    .view { display: none; }
+    .view.active { display: block; }
+    .section { padding: 16px 16px 0; }
+    .section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .section-title { font-size: .7rem; letter-spacing: .12em; text-transform: uppercase; color: var(--mute); font-weight: 600; display: flex; align-items: center; gap: 7px; }
+    .section-title .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: pulse 2.2s ease-in-out infinite; }
+    .section-title.dim .dot { background: var(--line); animation: none; }
+    @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .45; transform: scale(.82); } }
+    @media (prefers-reduced-motion: reduce) { .section-title .dot { animation: none; } }
+    .count { font-variant-numeric: tabular-nums; font-size: .72rem; color: var(--mute); }
+
+    /* ── Home: grid de ferramentas ── */
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .card {
+      background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 12px;
+      text-align: left; display: flex; flex-direction: column; gap: 10px; cursor: pointer;
+      transition: transform .12s ease, box-shadow .12s ease; position: relative; -webkit-tap-highlight-color: transparent;
+    }
+    .card:active { transform: scale(.96); }
+    .card.ready:hover { box-shadow: 0 6px 16px -8px rgba(18,17,16,.24); }
+    .icon-chip { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1rem; }
+    .card.ready .icon-chip { background: var(--ink); }
+    .card.soon .icon-chip { background: var(--bg-2); border: 1px solid var(--line); filter: grayscale(1); opacity: .7; }
+    .card-title { font-size: .84rem; font-weight: 700; letter-spacing: -0.01em; line-height: 1.25; }
+    .card-sub { font-size: .71rem; color: var(--mute); line-height: 1.3; }
+    .card-stat { font-family: Georgia, serif; font-style: italic; font-size: 1.1rem; color: var(--accent); line-height: 1; }
+    .card.soon .card-title { color: var(--mute); }
+    .soon-pill { position: absolute; top: 10px; right: 10px; font-size: .56rem; letter-spacing: .04em; font-weight: 700; color: var(--mute); background: var(--bg); border: 1px solid var(--line); border-radius: 100px; padding: 2px 7px; }
+
+    /* ── Tarefas ── */
+    .tasks { display: flex; flex-direction: column; }
+    .task { display: flex; align-items: flex-start; gap: 11px; padding: 11px 2px; border-bottom: 1px solid var(--line); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .task:last-child { border-bottom: none; }
+    .task-check { width: 19px; height: 19px; border-radius: 50%; border: 1.5px solid var(--ink-2); flex: 0 0 auto; margin-top: 1px; display: flex; align-items: center; justify-content: center; font-size: .62rem; color: var(--bg); transition: background .15s ease, border-color .15s ease; }
+    .task.done .task-check { background: var(--success); border-color: var(--success); }
+    .task-body { flex: 1; min-width: 0; }
+    .task-title { font-size: .84rem; font-weight: 500; line-height: 1.3; transition: color .15s ease; }
+    .task.done .task-title { color: var(--mute); text-decoration: line-through; }
+    .task-meta { display: flex; align-items: center; gap: 6px; margin-top: 3px; flex-wrap: wrap; }
+    .task-tag { font-size: .59rem; letter-spacing: .05em; text-transform: uppercase; font-weight: 600; color: var(--ink-2); background: color-mix(in srgb, var(--ink) 8%, transparent); border-radius: 100px; padding: 2px 7px; }
+    .task-num { font-family: Georgia, serif; font-style: italic; color: var(--accent); font-size: .74rem; }
+    .task.reminder { cursor: pointer; }
+    .task.reminder:hover { background: var(--bg-2); }
+    .task-arrow { width: 19px; height: 19px; flex: 0 0 auto; margin-top: 1px; display: flex; align-items: center; justify-content: center; color: var(--accent); font-size: .85rem; font-weight: 700; }
+    .tasks-empty { padding: 12px 2px; font-size: .77rem; color: var(--mute); }
+
+    .add-task { display: inline-flex; align-items: center; gap: 6px; font-size: .72rem; font-weight: 600; color: var(--accent); background: none; border: 1px solid var(--line); border-radius: 100px; padding: 6px 12px; cursor: pointer; font-family: inherit; -webkit-tap-highlight-color: transparent; white-space: nowrap; }
+    .add-task:active { transform: scale(.95); }
+    .link-btn { background: none; border: none; font: inherit; font-size: .72rem; font-weight: 600; color: var(--mute); cursor: pointer; padding: 6px 4px; }
+    .link-btn:hover { color: var(--ink); }
+    .task-footer-row { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+    .add-task-row { display: flex; gap: 8px; margin-bottom: 4px; }
+    .add-task-row .search-input { flex: 1; }
+    #btn-limpar { color: var(--mute); }
+
+    /* ── Placeholder views ── */
+    .placeholder-view { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 90px 24px; gap: 8px; }
+    .placeholder-icon { font-size: 2.1rem; opacity: .5; margin-bottom: 6px; }
+    .placeholder-title { font-size: 1.02rem; font-weight: 700; }
+    .placeholder-sub { font-size: .8rem; color: var(--mute); max-width: 260px; }
+
+    /* ── Fotos: toolbar / contador / lista ── */
+    .fotos-toolbar { display: flex; gap: 6px; padding: 14px 16px 0; }
+    .counter-block { padding: 0 16px; margin: 14px 0 4px; }
     .counter-numbers { display: flex; align-items: baseline; gap: 6px; margin-bottom: 6px; }
-    .counter-big { font-size: 1.8rem; font-weight: 700; line-height: 1; }
-    .counter-label { font-size: 0.8rem; color: var(--muted); }
-    .counter-done { font-size: 0.78rem; color: var(--green); font-weight: 500; }
-    .progress-bar { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
-    .progress-fill { height: 100%; background: var(--green); border-radius: 2px; transition: width 0.4s ease; }
+    .counter-big { font-size: 1.8rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+    .counter-label { font-size: 0.8rem; color: var(--mute); }
+    .counter-done { font-size: 0.78rem; color: var(--success); font-weight: 500; }
+    .progress-bar { height: 3px; background: var(--line); border-radius: 2px; overflow: hidden; }
+    .progress-fill { height: 100%; background: var(--success); border-radius: 2px; transition: width 0.4s ease; }
 
-    /* ── Filtro closets ── */
-    .closet-filter {
-      display: flex; gap: 6px; overflow-x: auto; padding: 10px 0;
-      -webkit-overflow-scrolling: touch; scrollbar-width: none;
-    }
+    .closet-filter { display: flex; gap: 6px; overflow-x: auto; padding: 10px 16px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
     .closet-filter::-webkit-scrollbar { display: none; }
 
-    /* ── Dica galeria ── */
-    .gallery-hint {
-      margin: 0 16px 0;
-      padding: 8px 12px;
-      background: #f0f7ff;
-      border: 1px solid #cce0ff;
-      border-radius: 8px;
-      font-size: 0.75rem;
-      color: #3a6ea8;
-      line-height: 1.4;
-    }
+    .gallery-hint { margin: 0 16px; padding: 8px 12px; background: color-mix(in srgb, var(--accent-2) 16%, var(--card)); border: 1px solid color-mix(in srgb, var(--accent-2) 40%, var(--line)); border-radius: 8px; font-size: 0.75rem; color: var(--ink-2); line-height: 1.4; }
 
-    /* ── Busca ── */
     .search-wrap { padding: 10px 16px 4px; }
-    .search-input {
-      width: 100%; padding: 9px 14px;
-      border: 1px solid var(--border); border-radius: 100px;
-      font-size: 0.85rem; background: var(--surface); color: var(--text);
-      outline: none; -webkit-appearance: none;
-    }
+    .search-input { width: 100%; padding: 9px 14px; border: 1px solid var(--line); border-radius: 100px; font-size: 0.85rem; background: var(--card); color: var(--ink); outline: none; -webkit-appearance: none; font-family: inherit; }
     .search-input:focus { border-color: var(--accent); }
 
-    .filter-chip {
-      flex-shrink: 0;
-      padding: 6px 12px;
-      border: 1px solid var(--border);
-      border-radius: 100px;
-      font-size: 0.78rem; font-weight: 500;
-      background: var(--surface); color: var(--text);
-      cursor: pointer; white-space: nowrap;
-      -webkit-tap-highlight-color: transparent;
-      transition: all 0.15s;
-    }
-    .filter-chip.is-on { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .filter-chip { flex-shrink: 0; padding: 6px 12px; border: 1px solid var(--line); border-radius: 100px; font-size: 0.78rem; font-weight: 500; background: var(--card); color: var(--ink); cursor: pointer; white-space: nowrap; -webkit-tap-highlight-color: transparent; transition: all 0.15s; }
+    .filter-chip.is-on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 
-    /* ── Lista ── */
     .list { padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
 
-    /* ── Piece card ── */
-    .piece-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 10px 12px;
-      display: flex; align-items: center; gap: 12px;
-      cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
-      transition: background 0.1s;
-    }
-    .piece-card:active { background: #f0ece8; }
+    .piece-card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: flex; align-items: center; gap: 12px; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background 0.1s; }
+    .piece-card:active { background: var(--bg-2); }
     .piece-card.uploading { opacity: 0.5; pointer-events: none; }
-    .piece-card.done { border-color: var(--green); }
+    .piece-card.done { border-color: var(--success); }
 
-    .thumb {
-      width: 48px; height: 64px;
-      border-radius: 6px; background: #f0ece8;
-      flex-shrink: 0;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.2rem; overflow: hidden;
-    }
+    .thumb { width: 48px; height: 64px; border-radius: 6px; background: var(--bg-2); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; overflow: hidden; }
     .thumb img { width: 100%; height: 100%; object-fit: cover; }
 
     .piece-info { flex: 1; min-width: 0; }
-    .piece-id   { font-size: 0.68rem; color: var(--muted); font-weight: 600; letter-spacing: 0.06em; }
+    .piece-id   { font-size: 0.68rem; color: var(--mute); font-weight: 600; letter-spacing: 0.06em; }
     .piece-desc { font-size: 0.85rem; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .piece-meta { font-size: 0.72rem; color: var(--muted); margin-top: 3px; }
+    .piece-meta { font-size: 0.72rem; color: var(--mute); margin-top: 3px; }
 
-    .add-icon {
-      width: 30px; height: 30px;
-      border: 1.5px dashed var(--border); border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1rem; color: var(--muted); flex-shrink: 0;
-    }
-    .piece-card.done .add-icon { border: none; color: var(--green); font-size: 1.1rem; }
+    .add-icon { width: 30px; height: 30px; border: 1.5px dashed var(--line); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1rem; color: var(--mute); flex-shrink: 0; }
+    .piece-card.done .add-icon { border: none; color: var(--success); font-size: 1.1rem; }
 
-    .spinner {
-      width: 18px; height: 18px;
-      border: 2px solid var(--border); border-top-color: var(--accent);
-      border-radius: 50%; animation: spin 0.7s linear infinite;
-    }
+    .spinner { width: 18px; height: 18px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    .empty { text-align: center; padding: 60px 20px; color: var(--muted); font-size: 0.9rem; }
-    .loading-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+    .empty { text-align: center; padding: 60px 20px; color: var(--mute); font-size: 0.9rem; }
+    .loading-state { text-align: center; padding: 60px 20px; color: var(--mute); }
 
     input[type="file"] { display: none; }
 
-    .toast {
-      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
-      background: var(--accent); color: #fff;
-      padding: 10px 20px; border-radius: 8px; font-size: 0.85rem;
-      opacity: 0; transition: opacity 0.2s;
-      pointer-events: none; white-space: nowrap; z-index: 100;
-    }
+    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 20px; border-radius: 100px; font-size: 0.85rem; opacity: 0; transition: opacity 0.2s; pointer-events: none; white-space: nowrap; z-index: 100; }
     .toast.show { opacity: 1; }
 
     /* ── Nova peça ── */
-    .nova-wrap { padding: 16px; display: none; flex-direction: column; gap: 14px; max-width: 480px; margin: 0 auto; }
-    .nova-wrap.show { display: flex; }
-    .field label { display: block; font-size: 0.72rem; font-weight: 600; color: var(--muted); letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 5px; }
-    .field input, .field select, .field textarea {
-      width: 100%; padding: 10px 12px;
-      border: 1px solid var(--border); border-radius: 8px;
-      font-size: 0.95rem; background: var(--surface); color: var(--text);
-      outline: none; -webkit-appearance: none; font-family: inherit;
-    }
+    .nova-wrap { padding: 16px; display: flex; flex-direction: column; gap: 14px; max-width: 480px; margin: 0 auto; }
+    .field label { display: block; font-size: 0.72rem; font-weight: 600; color: var(--mute); letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 5px; }
+    .field input, .field select, .field textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; font-size: 0.95rem; background: var(--card); color: var(--ink); outline: none; -webkit-appearance: none; font-family: inherit; }
     .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); }
     .photo-strip { display: flex; gap: 8px; flex-wrap: wrap; }
-    .photo-strip .ph {
-      width: 72px; height: 96px; border-radius: 8px; overflow: hidden;
-      background: #f0ece8; position: relative; flex-shrink: 0;
-    }
+    .photo-strip .ph { width: 72px; height: 96px; border-radius: 8px; overflow: hidden; background: var(--bg-2); position: relative; flex-shrink: 0; }
     .photo-strip .ph img { width: 100%; height: 100%; object-fit: cover; }
-    .photo-strip .ph .rm {
-      position: absolute; top: 3px; right: 3px;
-      width: 20px; height: 20px; border-radius: 50%;
-      background: rgba(0,0,0,0.55); color: #fff; border: none;
-      font-size: 0.75rem; line-height: 1; cursor: pointer;
-    }
-    .photo-add {
-      width: 72px; height: 96px; border: 1.5px dashed var(--border); border-radius: 8px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.4rem; color: var(--muted); background: none; cursor: pointer;
-      -webkit-tap-highlight-color: transparent; flex-shrink: 0;
-    }
-    .btn {
-      width: 100%; padding: 12px;
-      border: none; border-radius: 8px;
-      font-size: 0.95rem; font-weight: 500; cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
-      display: flex; align-items: center; justify-content: center; gap: 8px;
-    }
-    .btn-dark { background: var(--accent); color: #fff; }
-    .btn-outline { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+    .photo-strip .ph .rm { position: absolute; top: 3px; right: 3px; width: 20px; height: 20px; border-radius: 50%; background: rgba(0,0,0,0.55); color: #fff; border: none; font-size: 0.75rem; line-height: 1; cursor: pointer; }
+    .photo-add { width: 72px; height: 96px; border: 1.5px dashed var(--line); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; color: var(--mute); background: none; cursor: pointer; -webkit-tap-highlight-color: transparent; flex-shrink: 0; }
+    .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 0.95rem; font-weight: 500; cursor: pointer; -webkit-tap-highlight-color: transparent; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .btn-dark { background: var(--ink); color: var(--bg); }
+    .btn-outline { background: var(--card); color: var(--ink); border: 1px solid var(--line); }
     .btn:disabled { opacity: 0.45; pointer-events: none; }
-    .ia-note {
-      padding: 10px 12px; background: #f0f7ff; border: 1px solid #cce0ff;
-      border-radius: 8px; font-size: 0.8rem; color: #3a6ea8; line-height: 1.45;
-      display: none;
-    }
+    .ia-note { padding: 10px 12px; background: color-mix(in srgb, var(--accent-2) 16%, var(--card)); border: 1px solid color-mix(in srgb, var(--accent-2) 40%, var(--line)); border-radius: 8px; font-size: 0.8rem; color: var(--ink-2); line-height: 1.45; display: none; }
     .ia-note.show { display: block; }
-    .nova-hint { font-size: 0.75rem; color: var(--muted); line-height: 1.4; }
+    .nova-hint { font-size: 0.75rem; color: var(--mute); line-height: 1.4; }
   </style>
 </head>
 <body>
 
-<header>
-  <div class="header-top">
-    <div class="logo">não apego</div>
-    <div style="display:flex;gap:6px;">
-      <button class="filter-chip is-on" id="btn-sem-foto" onclick="setMode('sem-foto')">sem foto</button>
-      <button class="filter-chip" id="btn-trocar" onclick="setMode('trocar')">trocar foto</button>
-      <button class="filter-chip" id="btn-nova" onclick="setMode('nova')">➕ nova</button>
+<header id="app-header"></header>
+
+<!-- ── HOME ── -->
+<div class="view active" id="view-home">
+  <div class="section" style="padding-top:16px;">
+    <div class="grid">
+      <div class="card ready" onclick="showView('fotos')">
+        <div class="icon-chip">📷</div>
+        <div>
+          <div class="card-title">Fotos do catálogo</div>
+          <div class="card-stat"><span id="stat-semfoto">—</span></div>
+          <div class="card-sub">peças sem foto</div>
+        </div>
+      </div>
+      <div class="card ready" onclick="showView('nova')">
+        <div class="icon-chip">➕</div>
+        <div>
+          <div class="card-title">Cadastrar peça</div>
+          <div class="card-sub">cadastro assistido por IA</div>
+        </div>
+      </div>
+      <div class="card ready" onclick="showView('tarefas')">
+        <div class="icon-chip">✅</div>
+        <div>
+          <div class="card-title">Tarefas</div>
+          <div class="card-stat"><span id="stat-pendentes">—</span></div>
+          <div class="card-sub">pendentes</div>
+        </div>
+      </div>
+      <div class="card soon" onclick="showToast('Em breve')">
+        <span class="soon-pill">em breve</span>
+        <div class="icon-chip">💰</div>
+        <div><div class="card-title">Repasses</div><div class="card-sub">pagamentos por closet</div></div>
+      </div>
     </div>
+  </div>
+
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title"><span class="dot"></span>tarefas de hoje</div>
+      <div class="count" id="taskCount">0/0</div>
+    </div>
+    <div class="tasks" id="task-reminder-wrap">
+      <div class="task reminder" id="task-reminder" style="display:none;" onclick="showView('fotos')">
+        <div class="task-arrow">→</div>
+        <div class="task-body">
+          <div class="task-title">Subir fotos das peças novas</div>
+          <div class="task-meta"><span class="task-tag">fotos</span><span class="task-num"><span class="reminder-count">0</span> pendentes</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="tasks" id="task-list"></div>
+    <div class="task-footer-row">
+      <button class="add-task" onclick="addTaskPrompt()">+ nova tarefa</button>
+      <button class="link-btn" onclick="showView('tarefas')">ver todas →</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title dim"><span class="dot"></span>em construção</div>
+    <div class="grid" style="margin-top:12px;">
+      <div class="card soon" onclick="showView('painel')">
+        <span class="soon-pill">em breve</span>
+        <div class="icon-chip">📊</div>
+        <div><div class="card-title">Painel</div><div class="card-sub">faturamento e indicadores</div></div>
+      </div>
+      <div class="card soon" onclick="showView('crm')">
+        <span class="soon-pill">em breve</span>
+        <div class="icon-chip">👥</div>
+        <div><div class="card-title">Compradoras</div><div class="card-stat"><span id="stat-compradoras">—</span></div><div class="card-sub">no histórico</div></div>
+      </div>
+      <div class="card soon" onclick="showToast('Em breve')">
+        <span class="soon-pill">em breve</span>
+        <div class="icon-chip">⚙️</div>
+        <div><div class="card-title">Configurações</div><div class="card-sub">senha, integrações</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── TAREFAS ── -->
+<div class="view" id="view-tarefas">
+  <div class="section" style="padding-top:16px;">
+    <div class="add-task-row">
+      <input type="text" id="tarefa-input" class="search-input" placeholder="nova tarefa…" />
+      <button class="add-task" onclick="addTaskFromView()">adicionar</button>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title"><span class="dot"></span>pendentes</div>
+      <div class="count" id="count-pendentes">0</div>
+    </div>
+    <div class="tasks" id="tarefas-pendentes"></div>
+  </div>
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title dim"><span class="dot"></span>concluídas</div>
+      <button class="add-task" id="btn-limpar" onclick="clearCompleted()" style="display:none;">limpar</button>
+    </div>
+    <div class="tasks" id="tarefas-concluidas"></div>
+  </div>
+</div>
+
+<!-- ── FOTOS ── -->
+<div class="view" id="view-fotos">
+  <div class="fotos-toolbar">
+    <button class="filter-chip is-on" id="btn-sem-foto" onclick="setMode('sem-foto')">sem foto</button>
+    <button class="filter-chip" id="btn-trocar" onclick="setMode('trocar')">trocar foto</button>
   </div>
   <div class="counter-block" id="counter-block" style="display:none;">
     <div class="counter-numbers">
@@ -203,52 +284,70 @@
     <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
   </div>
   <div class="closet-filter" id="closet-filter"></div>
-</header>
-
-<div class="gallery-hint" id="gallery-hint" style="display:none;">
-  📷 Ao tocar numa peça, escolha <strong>Galeria</strong> ou <strong>Fotos</strong> — não "Câmera"
-</div>
-<div class="search-wrap" id="search-wrap" style="display:none;">
-  <input class="search-input" id="search-input" type="search" placeholder="buscar por marca, descrição ou código…" autocomplete="off" />
-</div>
-
-<div id="app">
-  <div class="loading-state">carregando peças…</div>
-</div>
-
-<!-- ── Cadastro de nova peça ── -->
-<div class="nova-wrap" id="nova-wrap">
-  <div class="nova-hint">
-    📷 Tire fotos da peça (frente e verso) e <strong>da etiqueta interna</strong> — é dela que a IA lê a marca e o tamanho.
+  <div class="gallery-hint" id="gallery-hint" style="display:none;">
+    📷 Ao tocar numa peça, escolha <strong>Galeria</strong> ou <strong>Fotos</strong> — não "Câmera"
   </div>
-
-  <div class="field">
-    <label>Closet</label>
-    <select id="nova-closet"></select>
-    <input id="nova-closet-outro" type="text" placeholder="nome do closet" style="display:none;margin-top:8px;" />
+  <div class="search-wrap" id="search-wrap" style="display:none;">
+    <input class="search-input" id="search-input" type="search" placeholder="buscar por marca, descrição ou código…" autocomplete="off" />
   </div>
+  <div id="app">
+    <div class="loading-state">carregando peças…</div>
+  </div>
+</div>
 
-  <div class="field">
-    <label>Fotos</label>
-    <div class="photo-strip" id="nova-photos">
-      <button class="photo-add" id="nova-photo-add">+</button>
+<!-- ── NOVA PEÇA ── -->
+<div class="view" id="view-nova">
+  <div class="nova-wrap" id="nova-wrap">
+    <div class="nova-hint">
+      📷 Tire fotos da peça (frente e verso) e <strong>da etiqueta interna</strong> — é dela que a IA lê a marca e o tamanho.
     </div>
-  </div>
 
-  <button class="btn btn-outline" id="nova-analyze" disabled>✨ Analisar com IA</button>
-  <div class="ia-note" id="nova-obs"></div>
+    <div class="field">
+      <label>Closet</label>
+      <select id="nova-closet"></select>
+      <input id="nova-closet-outro" type="text" placeholder="nome do closet" style="display:none;margin-top:8px;" />
+    </div>
 
-  <div class="field"><label>Descritivo</label><input id="nova-desc" type="text" placeholder="ex: Vestido Midi Floral" /></div>
-  <div style="display:flex;gap:10px;">
-    <div class="field" style="flex:1;"><label>Marca</label><input id="nova-marca" type="text" /></div>
-    <div class="field" style="width:90px;"><label>Tamanho</label><input id="nova-tam" type="text" /></div>
-  </div>
-  <div style="display:flex;gap:10px;">
-    <div class="field" style="flex:1;"><label>Cor</label><input id="nova-cor" type="text" /></div>
-    <div class="field" style="flex:1;"><label>Preço (R$)</label><input id="nova-preco" type="text" inputmode="decimal" placeholder="0,00" /></div>
-  </div>
+    <div class="field">
+      <label>Fotos</label>
+      <div class="photo-strip" id="nova-photos">
+        <button class="photo-add" id="nova-photo-add">+</button>
+      </div>
+    </div>
 
-  <button class="btn btn-dark" id="nova-save" disabled>Salvar no catálogo</button>
+    <button class="btn btn-outline" id="nova-analyze" disabled>✨ Analisar com IA</button>
+    <div class="ia-note" id="nova-obs"></div>
+
+    <div class="field"><label>Descritivo</label><input id="nova-desc" type="text" placeholder="ex: Vestido Midi Floral" /></div>
+    <div style="display:flex;gap:10px;">
+      <div class="field" style="flex:1;"><label>Marca</label><input id="nova-marca" type="text" /></div>
+      <div class="field" style="width:90px;"><label>Tamanho</label><input id="nova-tam" type="text" /></div>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <div class="field" style="flex:1;"><label>Cor</label><input id="nova-cor" type="text" /></div>
+      <div class="field" style="flex:1;"><label>Preço (R$)</label><input id="nova-preco" type="text" inputmode="decimal" placeholder="0,00" /></div>
+    </div>
+
+    <button class="btn btn-dark" id="nova-save" disabled>Salvar no catálogo</button>
+  </div>
+</div>
+
+<!-- ── PAINEL (placeholder) ── -->
+<div class="view" id="view-painel">
+  <div class="placeholder-view">
+    <div class="placeholder-icon">📊</div>
+    <div class="placeholder-title">Painel</div>
+    <div class="placeholder-sub">Faturamento, comissões e repasses por closet — em breve.</div>
+  </div>
+</div>
+
+<!-- ── COMPRADORAS (placeholder) ── -->
+<div class="view" id="view-crm">
+  <div class="placeholder-view">
+    <div class="placeholder-icon">👥</div>
+    <div class="placeholder-title">Compradoras</div>
+    <div class="placeholder-sub">Base de contatos e histórico de compras — em breve.</div>
+  </div>
 </div>
 
 <input type="file" id="filePicker" accept="image/*" />
@@ -256,12 +355,23 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  let allPieces    = [];
-  let activePiece  = null;
-  let activeCloset = 'todos';
-  let searchQuery  = '';
+  // ── Estado global ──────────────────────────────────────────
+  let currentView   = 'home';
+  let allPieces     = [];
+  let piecesLoaded  = false;
+  let activePiece   = null;
+  let activeCloset  = 'todos';
+  let searchQuery   = '';
   let totalOriginal = 0;
-  let mode         = 'sem-foto'; // 'sem-foto' | 'trocar'
+  let mode          = 'sem-foto'; // 'sem-foto' | 'trocar'
+  let tasksCache    = [];
+
+  function showToast(msg, duration = 2500) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), duration);
+  }
 
   function compressImage(file) {
     return new Promise((resolve, reject) => {
@@ -288,16 +398,183 @@
     });
   }
 
-  function showToast(msg, duration = 2500) {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), duration);
-  }
-
   function formatPrice(raw) {
     const n = parseFloat(String(raw).replace(/[R$\s"]/g, '').replace(',', '.'));
     return isNaN(n) ? '' : 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 0 });
+  }
+
+  // ── Navegação (SPA) ────────────────────────────────────────
+  function renderHeader(name) {
+    const titles = { fotos: 'Fotos do catálogo', nova: 'Cadastrar peça', tarefas: 'Tarefas', painel: 'Painel', crm: 'Compradoras' };
+    const el = document.getElementById('app-header');
+    if (name === 'home') {
+      el.innerHTML = `
+        <div class="wordmark">não apego<span class="dot"></span><span class="suffix">gestão</span></div>
+        <div class="greeting">Oi, <b>Lu</b> — vamos organizar o dia?</div>`;
+    } else {
+      el.innerHTML = `
+        <button class="back-btn" onclick="showView('home')">← menu</button>
+        <div class="view-title">${titles[name] || ''}</div>`;
+    }
+  }
+
+  function showView(name) {
+    currentView = name;
+    document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + name));
+    renderHeader(name);
+    if (name === 'home') loadHomeStats();
+    if (name === 'home' || name === 'tarefas') loadTasks();
+    if (name === 'fotos' || name === 'nova') loadPieces();
+    window.scrollTo(0, 0);
+  }
+
+  // ── Home: stats ─────────────────────────────────────────────
+  function loadHomeStats() {
+    google.script.run
+      .withSuccessHandler(stats => {
+        document.getElementById('stat-semfoto').textContent = stats.semFoto;
+        document.getElementById('stat-compradoras').textContent = stats.compradoras;
+        const rem = document.getElementById('task-reminder');
+        if (stats.semFoto > 0) {
+          rem.style.display = 'flex';
+          rem.querySelector('.reminder-count').textContent = stats.semFoto;
+        } else {
+          rem.style.display = 'none';
+        }
+      })
+      .withFailureHandler(err => console.error(err))
+      .getHomeStats();
+  }
+
+  // ── Tarefas ─────────────────────────────────────────────────
+  function loadTasks() {
+    google.script.run
+      .withSuccessHandler(tasks => { tasksCache = tasks; renderAllTasks(); })
+      .withFailureHandler(err => console.error(err))
+      .getTasks();
+  }
+
+  function isSameLocalDay(iso) {
+    if (!iso) return false;
+    const d = new Date(iso), now = new Date();
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+  }
+
+  function taskRowHtml(t) {
+    return `<div class="task ${t.feita ? 'done' : ''}" data-id="${t.id}">
+      <div class="task-check">✓</div>
+      <div class="task-body">
+        <div class="task-title">${t.texto}</div>
+        ${t.tag ? `<div class="task-meta"><span class="task-tag">${t.tag}</span></div>` : ''}
+      </div>
+    </div>`;
+  }
+
+  function renderAllTasks() {
+    // Home: pendentes + concluídas só de hoje (concluídas de dias anteriores somem sozinhas)
+    const visibleHome = tasksCache.filter(t => !t.feita || isSameLocalDay(t.concluidaEm));
+    document.getElementById('task-list').innerHTML = visibleHome.length
+      ? visibleHome.slice(0, 6).map(taskRowHtml).join('')
+      : '<div class="tasks-empty">nenhuma tarefa por aqui 🎉</div>';
+    const doneHome = visibleHome.filter(t => t.feita).length;
+    document.getElementById('taskCount').textContent = doneHome + '/' + visibleHome.length;
+
+    // Tela cheia: pendentes e concluídas (todas, sem corte por dia)
+    const pend = tasksCache.filter(t => !t.feita);
+    const done = tasksCache.filter(t => t.feita)
+      .sort((a, b) => new Date(b.concluidaEm) - new Date(a.concluidaEm));
+    document.getElementById('tarefas-pendentes').innerHTML = pend.length
+      ? pend.map(taskRowHtml).join('')
+      : '<div class="tasks-empty">nenhuma tarefa pendente 🎉</div>';
+    document.getElementById('tarefas-concluidas').innerHTML = done.length
+      ? done.map(taskRowHtml).join('')
+      : '<div class="tasks-empty">nada concluído ainda</div>';
+    document.getElementById('count-pendentes').textContent = pend.length;
+    document.getElementById('btn-limpar').style.display = done.length ? 'inline-flex' : 'none';
+
+    const statPend = document.getElementById('stat-pendentes');
+    if (statPend) statPend.textContent = pend.length;
+  }
+
+  function toggleTaskRow(id) {
+    const task = tasksCache.find(t => t.id === id);
+    if (!task) return;
+    const wasFeita = task.feita, wasConcluida = task.concluidaEm;
+    task.feita = !wasFeita;
+    task.concluidaEm = task.feita ? new Date().toISOString() : '';
+    renderAllTasks();
+
+    google.script.run
+      .withSuccessHandler(res => { task.concluidaEm = res.concluidaEm; renderAllTasks(); })
+      .withFailureHandler(err => {
+        task.feita = wasFeita;
+        task.concluidaEm = wasConcluida;
+        renderAllTasks();
+        showToast('Erro ao atualizar tarefa.');
+        console.error(err);
+      })
+      .toggleTask(id);
+  }
+
+  ['task-list', 'tarefas-pendentes', 'tarefas-concluidas'].forEach(id => {
+    document.getElementById(id).addEventListener('click', e => {
+      const row = e.target.closest('.task');
+      if (!row) return;
+      toggleTaskRow(row.dataset.id);
+    });
+  });
+
+  function addTaskCommon(texto) {
+    texto = (texto || '').trim();
+    if (!texto) return;
+    google.script.run
+      .withSuccessHandler(task => { tasksCache.push(task); renderAllTasks(); })
+      .withFailureHandler(err => { showToast('Erro: ' + (err.message || 'tente novamente')); console.error(err); })
+      .addTask(texto, '');
+  }
+
+  function addTaskPrompt() {
+    addTaskCommon(prompt('Nova tarefa:'));
+  }
+
+  function addTaskFromView() {
+    const input = document.getElementById('tarefa-input');
+    addTaskCommon(input.value);
+    input.value = '';
+  }
+
+  function clearCompleted() {
+    if (!confirm('Remover todas as tarefas concluídas? Essa ação não pode ser desfeita.')) return;
+    google.script.run
+      .withSuccessHandler(removed => {
+        tasksCache = tasksCache.filter(t => !t.feita);
+        renderAllTasks();
+        showToast(removed + ' tarefa(s) removida(s).');
+      })
+      .withFailureHandler(err => { showToast('Erro ao limpar tarefas.'); console.error(err); })
+      .clearCompletedTasks();
+  }
+
+  // ── Fotos do catálogo ───────────────────────────────────────
+  function loadPieces() {
+    if (piecesLoaded) return;
+    google.script.run
+      .withSuccessHandler(data => {
+        allPieces     = data;
+        totalOriginal = data.filter(p => !p.hasPhoto).length;
+        piecesLoaded  = true;
+        updateCounter();
+        renderFilter();
+        renderList();
+        populateClosetSelect();
+        document.getElementById('gallery-hint').style.display = 'block';
+        document.getElementById('search-wrap').style.display  = 'block';
+      })
+      .withFailureHandler(err => {
+        document.getElementById('app').innerHTML =
+          `<div class="empty">Erro ao carregar.<br><small>${err.message}</small></div>`;
+      })
+      .getPieces();
   }
 
   function visiblePieces() {
@@ -319,8 +596,7 @@
   }
 
   function getClosets() {
-    const closets = [...new Set(allPieces.map(p => p.closet))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
-    return closets;
+    return [...new Set(allPieces.map(p => p.closet))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
   }
 
   function renderFilter() {
@@ -433,7 +709,6 @@
     }
   });
 
-  // Busca
   document.getElementById('search-input').addEventListener('input', e => {
     searchQuery = e.target.value.trim();
     renderList();
@@ -443,22 +718,10 @@
     mode = m;
     document.getElementById('btn-sem-foto').classList.toggle('is-on', m === 'sem-foto');
     document.getElementById('btn-trocar').classList.toggle('is-on', m === 'trocar');
-    document.getElementById('btn-nova').classList.toggle('is-on', m === 'nova');
-
-    const isNova = m === 'nova';
-    document.getElementById('nova-wrap').classList.toggle('show', isNova);
-    document.getElementById('app').style.display = isNova ? 'none' : 'block';
-    document.getElementById('closet-filter').style.display = isNova ? 'none' : 'flex';
-    document.getElementById('gallery-hint').style.display = isNova ? 'none' : 'block';
-    document.getElementById('search-wrap').style.display = isNova ? 'none' : 'block';
-    if (isNova) {
-      document.getElementById('counter-block').style.display = 'none';
-      return;
-    }
-
     activeCloset = 'todos';
     searchQuery = '';
-    document.getElementById('search-input') && (document.getElementById('search-input').value = '');
+    const si = document.getElementById('search-input');
+    if (si) si.value = '';
     updateCounter();
     renderFilter();
     renderList();
@@ -602,22 +865,8 @@
       .createPiece(payload);
   });
 
-  google.script.run
-    .withSuccessHandler(data => {
-      allPieces     = data;
-      totalOriginal = data.filter(p => !p.hasPhoto).length;
-      updateCounter();
-      renderFilter();
-      renderList();
-      populateClosetSelect();
-      document.getElementById('gallery-hint').style.display = 'block';
-      document.getElementById('search-wrap').style.display  = 'block';
-    })
-    .withFailureHandler(err => {
-      document.getElementById('app').innerHTML =
-        `<div class="empty">Erro ao carregar.<br><small>${err.message}</small></div>`;
-    })
-    .getPieces();
+  // ── Boot ────────────────────────────────────────────────────
+  showView('home');
 </script>
 </body>
 </html>

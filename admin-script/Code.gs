@@ -17,7 +17,7 @@ function doGet(e) {
 
   return HtmlService
     .createHtmlOutputFromFile('Admin')
-    .setTitle('não apego — fotos')
+    .setTitle('não apego — gestão')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1.0, maximum-scale=1.0');
 }
 
@@ -25,12 +25,12 @@ function loginHtml() {
   return '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">' +
     '<meta name="viewport" content="width=device-width,initial-scale=1">' +
     '<style>*{box-sizing:border-box;margin:0;padding:0}' +
-    'body{background:#fafaf8;font-family:-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}' +
-    '.box{background:#fff;border:1px solid #e8e4df;border-radius:12px;padding:36px 24px;width:100%;max-width:300px;text-align:center}' +
-    '.logo{font-size:1.1rem;font-weight:300;letter-spacing:.18em;margin-bottom:28px}' +
-    'input{width:100%;padding:10px 14px;border:1px solid #e8e4df;border-radius:8px;font-size:1rem;outline:none;margin-bottom:12px}' +
-    'input:focus{border-color:#2d2d2d}' +
-    'button{width:100%;padding:11px;background:#2d2d2d;color:#fff;border:none;border-radius:8px;font-size:.95rem;cursor:pointer}' +
+    'body{background:#F2F0EB;font-family:-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}' +
+    '.box{background:#fff;border:1px solid #D8D2C4;border-radius:12px;padding:36px 24px;width:100%;max-width:300px;text-align:center}' +
+    '.logo{font-size:1.1rem;font-weight:800;letter-spacing:-0.03em;text-transform:lowercase;margin-bottom:28px;color:#121110}' +
+    'input{width:100%;padding:10px 14px;border:1px solid #D8D2C4;border-radius:8px;font-size:1rem;outline:none;margin-bottom:12px}' +
+    'input:focus{border-color:#B14A2C}' +
+    'button{width:100%;padding:11px;background:#121110;color:#F2F0EB;border:none;border-radius:8px;font-size:.95rem;cursor:pointer}' +
     '.err{color:#e74c3c;font-size:.82rem;margin-top:10px;display:none}</style></head>' +
     '<body><div class="box"><div class="logo">não apego</div>' +
     '<form id="f"><input type="password" id="pwd" placeholder="senha" autofocus/>' +
@@ -272,6 +272,163 @@ function createPiece(data) {
     }
 
     return codigo;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// ─── HOME: ESTATÍSTICAS ────────────────────────────────────────────────────
+function getHomeStats() {
+  const sheet   = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+  const data    = sheet.getDataRange().getValues();
+  const headers = data[0].map(h => String(h).trim());
+
+  const col = {
+    status:     headers.indexOf('Status'),
+    foto:       headers.indexOf('Foto'),
+    closet:     headers.indexOf('Closet'),
+    compradora: headers.indexOf('Compradora'),
+  };
+
+  let disponiveis = 0, semFoto = 0, vendidas = 0;
+  const closets = new Set();
+  const compradoras = new Set();
+
+  for (let i = 1; i < data.length; i++) {
+    const row    = data[i];
+    const status = String(row[col.status] || '').trim();
+    const foto   = String(row[col.foto]   || '').trim();
+    const closet = String(row[col.closet] || '').trim();
+    const compradora = col.compradora > -1 ? String(row[col.compradora] || '').trim() : '';
+
+    if (status === 'Disponível') {
+      disponiveis++;
+      if (!foto) semFoto++;
+    }
+    if (status === 'Pago') vendidas++;
+    if (closet) closets.add(closet);
+    if (compradora) compradoras.add(compradora);
+  }
+
+  return {
+    disponiveis: disponiveis,
+    semFoto: semFoto,
+    // sem recorte por mês — ESTOQUE ainda não tem "Data Venda" confiável (ver Fase 2 do plano)
+    vendidasMes: vendidas,
+    closets: closets.size,
+    compradoras: compradoras.size,
+  };
+}
+
+// ─── TAREFAS ────────────────────────────────────────────────────────────────
+const TASKS_SHEET = 'TAREFAS';
+
+function getOrCreateTarefasSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(TASKS_SHEET);
+  if (!sheet) {
+    sheet = ss.insertSheet(TASKS_SHEET);
+    sheet.getRange(1, 1, 1, 6).setValues([['Id', 'Texto', 'Tag', 'Feita', 'Criada em', 'Concluída em']]);
+  }
+  return sheet;
+}
+
+function getTasks() {
+  const sheet = getOrCreateTarefasSheet_();
+  const data  = sheet.getDataRange().getValues();
+  if (data.length < 2) return [];
+
+  const headers = data[0].map(h => String(h).trim());
+  const col = {
+    id:        headers.indexOf('Id'),
+    texto:     headers.indexOf('Texto'),
+    tag:       headers.indexOf('Tag'),
+    feita:     headers.indexOf('Feita'),
+    criada:    headers.indexOf('Criada em'),
+    concluida: headers.indexOf('Concluída em'),
+  };
+
+  return data.slice(1)
+    .filter(row => row[col.id])
+    .map(row => ({
+      id:          String(row[col.id]),
+      texto:       row[col.texto] || '',
+      tag:         row[col.tag] || '',
+      feita:       row[col.feita] === true,
+      criadaEm:    row[col.criada]    ? new Date(row[col.criada]).toISOString()    : '',
+      concluidaEm: row[col.concluida] ? new Date(row[col.concluida]).toISOString() : '',
+    }));
+}
+
+// Cria uma nova tarefa pendente. tag é opcional (string livre, ex: "fotos", "financeiro").
+function addTask(texto, tag) {
+  texto = String(texto || '').trim();
+  if (!texto) throw new Error('Texto da tarefa é obrigatório.');
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const sheet    = getOrCreateTarefasSheet_();
+    const id       = Utilities.getUuid();
+    const criadaEm = new Date();
+    sheet.appendRow([id, texto, tag || '', false, criadaEm, '']);
+    return { id: id, texto: texto, tag: tag || '', feita: false, criadaEm: criadaEm.toISOString(), concluidaEm: '' };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// Alterna feito/pendente e grava a data de conclusão (usada para decidir o que some da home no dia seguinte).
+function toggleTask(id) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const sheet   = getOrCreateTarefasSheet_();
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) throw new Error('Tarefa não encontrada.');
+
+    const data    = sheet.getRange(1, 1, lastRow, 6).getValues();
+    const headers = data[0].map(h => String(h).trim());
+    const idCol        = headers.indexOf('Id');
+    const feitaCol      = headers.indexOf('Feita');
+    const concluidaCol  = headers.indexOf('Concluída em');
+
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][idCol]) === String(id)) {
+        const novoFeita    = !data[i][feitaCol];
+        const concluidaEm  = novoFeita ? new Date() : '';
+        sheet.getRange(i + 1, feitaCol + 1).setValue(novoFeita);
+        sheet.getRange(i + 1, concluidaCol + 1).setValue(concluidaEm);
+        return { feita: novoFeita, concluidaEm: novoFeita ? concluidaEm.toISOString() : '' };
+      }
+    }
+    throw new Error('Tarefa não encontrada.');
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// Remove definitivamente as tarefas já concluídas (botão "limpar" na tela de Tarefas).
+function clearCompletedTasks() {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const sheet   = getOrCreateTarefasSheet_();
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return 0;
+
+    const data    = sheet.getRange(1, 1, lastRow, 6).getValues();
+    const headers = data[0].map(h => String(h).trim());
+    const feitaCol = headers.indexOf('Feita');
+
+    let removed = 0;
+    for (let i = data.length - 1; i >= 1; i--) {
+      if (data[i][feitaCol] === true) {
+        sheet.deleteRow(i + 1);
+        removed++;
+      }
+    }
+    return removed;
   } finally {
     lock.releaseLock();
   }
