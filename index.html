@@ -825,6 +825,10 @@ const CONFIG = {
   csvUrl: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTOzoKrPmyC0PJdAgViWTvZFotooklF89mciD2e-aVuCk1lMyw_SiTKjMAFfqpOBF3H2BiOBkHabq0l/pub?gid=1253613754&single=true&output=csv',
   whatsappNumber: 'NUMERO_DO_WHATSAPP', // trocar quando o chip chegar
   whatsappGroupLink: '#',               // link do grupo VIP — adicionar depois
+  // Dinâmica de desconto progressivo (drop 01/02/desapego final) ainda não está ativa —
+  // ideia futura. Enquanto false, toda peça aparece como "drop 01" (preço cheio da
+  // planilha), sem calcular desconto pelos dias reais desde a Data Entrada.
+  dropsAtivos: false,
 };
 
 /* ============ Data helpers ============ */
@@ -947,8 +951,15 @@ function productSVG(p) {
   return `<svg viewBox="0 0 400 560" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">${vs[Math.abs(hash(p.name))%vs.length]}</svg>`;
 }
 
+// Enquanto CONFIG.dropsAtivos for false, toda peça é tratada como "drop 01" —
+// sem descontos, sem contagem de dias — independente da Data Entrada real.
+const LOTE_CONGELADO = { n:1, cls:'l1', label:'drop 01 · novo', discount:0, pct:0, daysLeft:30 };
+function getLoteAtivo(days) {
+  return CONFIG.dropsAtivos ? getLote(days) : LOTE_CONGELADO;
+}
+
 function productTile(p) {
-  const lote = getLote(p.days);
+  const lote = getLoteAtivo(p.days);
   // Se vier do CATALOGO, Preço Atual já é o preço aprovado — não reaplicar desconto
   const hasOriginal = p.origPrice && p.origPrice !== p.price;
   const displayPrice = p.origPrice ? p.price : applyDiscount(p.price, lote.discount);
@@ -1133,7 +1144,7 @@ function applyFiltersAndRender() {
   _currentPage = 1;
   let list = PIECES.slice();
   if (filterState.size)  list = list.filter(p => normalizeSize(p.size) === filterState.size);
-  if (filterState.lote)  list = list.filter(p => getLote(p.days).n === filterState.lote);
+  if (filterState.lote)  list = list.filter(p => getLoteAtivo(p.days).n === filterState.lote);
   if (filterState.brand) list = list.filter(p => p.brand.toLowerCase() === filterState.brand.toLowerCase());
   if (filterState.color) list = list.filter(p => p.color.toLowerCase() === filterState.color.toLowerCase());
   if (filterState.tipo)  list = list.filter(p => p.tipo === filterState.tipo);
@@ -1186,7 +1197,7 @@ function renderFilters() {
   const brandCounts = {};
   PIECES.forEach(p=>{ if(p.brand) brandCounts[p.brand]=(brandCounts[p.brand]||0)+1; });
   const topBrands = Object.entries(brandCounts).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([b])=>b);
-  const lc = [0,1,2,3].map(n=>n===0?PIECES.length:PIECES.filter(p=>getLote(p.days).n===n).length);
+  const lc = [0,1,2,3].map(n=>n===0?PIECES.length:PIECES.filter(p=>getLoteAtivo(p.days).n===n).length);
   const sizes = ['PP','P','M','G','GG'];
 
   document.getElementById('filters').innerHTML = `

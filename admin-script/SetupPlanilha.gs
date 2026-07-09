@@ -53,6 +53,8 @@ function onOpen() {
     .addItem('🔄  Gerar / Atualizar Catálogo', 'gerarCatalogo')
     .addSeparator()
     .addItem('✅  Aplicar drops pendentes', 'aplicarDropsPendentes')
+    .addSeparator()
+    .addItem('🔒  Resetar tudo pra Drop 01 (preço cheio)', 'resetarParaDropUm')
     .addToUi();
 }
 
@@ -266,6 +268,46 @@ function aplicarDropsPendentes() {
   });
 
   ss.toast(`✅ ${todas.length} preço(s) atualizado(s).`, 'Drops aplicados', 5);
+}
+
+
+// ============================================================
+//  RESETAR PRA DROP 01 (preço cheio)
+//  A dinâmica de desconto progressivo (drop 02 / desapego final) ainda não
+//  está ativa — nem na planilha nem no site (ver CONFIG.dropsAtivos no
+//  index.html). Isso força Drop Atual/Status Drop/Preço Atual de volta ao
+//  estado "recém-cadastrado" pra tudo que já existe no CATALOGO, sem apagar
+//  as colunas (ficam como referência pra quando a dinâmica for ativada).
+// ============================================================
+function resetarParaDropUm() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const catalogo = ss.getSheetByName(SHEET_CATALOGO);
+  if (!catalogo || catalogo.getLastRow() < 2) {
+    _alerta('CATALOGO vazio. Execute "Gerar / Atualizar Catálogo" primeiro.');
+    return;
+  }
+
+  const ui = SpreadsheetApp.getUi();
+  const resp = ui.alert(
+    'Resetar pra Drop 01',
+    'Isso marca todas as peças do CATALOGO como "Drop 01" (preço cheio da Preço Original), ' +
+    'desfazendo qualquer desconto já aplicado. Confirmar?',
+    ui.ButtonSet.YES_NO
+  );
+  if (resp !== ui.Button.YES) return;
+
+  const lastRow = catalogo.getLastRow();
+  const dados = catalogo.getRange(2, 1, lastRow - 1, CAT_HEADERS.length).getValues();
+
+  dados.forEach(row => {
+    const precoOriginal = row[C['Preço Original'] - 1];
+    row[C['Preço Atual'] - 1] = (precoOriginal && precoOriginal > 0) ? precoOriginal : row[C['Preço Atual'] - 1];
+    row[C['Drop Atual'] - 1]  = 'Drop 01';
+    row[C['Status Drop'] - 1] = '✓ ok';
+  });
+
+  catalogo.getRange(2, 1, dados.length, CAT_HEADERS.length).setValues(dados);
+  ss.toast(`✅ ${dados.length} peça(s) resetada(s) pra Drop 01 / preço cheio.`, 'Reset concluído', 6);
 }
 
 
