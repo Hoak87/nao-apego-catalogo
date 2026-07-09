@@ -391,6 +391,11 @@ function createPiece(data) {
     const estRow = headers.map(h => estValues[h] !== undefined ? estValues[h] : '');
     const novaLinha = estLastDataRow + 1;
     estoque.getRange(novaLinha, 1, 1, estRow.length).setValues([estRow]);
+    // Copia só a formatação (bordas, grade, cor, número) da linha de cima — sem mexer nos valores.
+    if (estLastDataRow > 1) {
+      estoque.getRange(estLastDataRow, 1, 1, estoque.getLastColumn())
+        .copyTo(estoque.getRange(novaLinha, 1, 1, estoque.getLastColumn()), SpreadsheetApp.CopyPasteType.PASTE_FORMAT, false);
+    }
     if (repasseCol > -1)  estoque.getRange(novaLinha, repasseCol + 1).setNumberFormat('0%');
     if (comissaoCol > -1) estoque.getRange(novaLinha, comissaoCol + 1).setNumberFormat('0%');
 
@@ -425,7 +430,12 @@ function createPiece(data) {
         'Status Drop': '✓ ok',
       };
       const catRow = catHead.map(h => catValues[h] !== undefined ? catValues[h] : '');
-      catalogo.getRange(catLastDataRow + 1, 1, 1, catRow.length).setValues([catRow]);
+      const catNovaLinha = catLastDataRow + 1;
+      catalogo.getRange(catNovaLinha, 1, 1, catRow.length).setValues([catRow]);
+      if (catLastDataRow > 1) {
+        catalogo.getRange(catLastDataRow, 1, 1, catalogo.getLastColumn())
+          .copyTo(catalogo.getRange(catNovaLinha, 1, 1, catalogo.getLastColumn()), SpreadsheetApp.CopyPasteType.PASTE_FORMAT, false);
+      }
     }
 
     return codigo;
