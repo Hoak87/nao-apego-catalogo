@@ -149,11 +149,11 @@
     .field label { display: block; font-size: 0.72rem; font-weight: 600; color: var(--mute); letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 5px; }
     .field input, .field select, .field textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; font-size: 0.95rem; background: var(--card); color: var(--ink); outline: none; -webkit-appearance: none; font-family: inherit; }
     .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); }
+    .photo-actions { display: flex; gap: 8px; margin-bottom: 10px; }
     .photo-strip { display: flex; gap: 8px; flex-wrap: wrap; }
     .photo-strip .ph { width: 72px; height: 96px; border-radius: 8px; overflow: hidden; background: var(--bg-2); position: relative; flex-shrink: 0; }
     .photo-strip .ph img { width: 100%; height: 100%; object-fit: cover; }
     .photo-strip .ph .rm { position: absolute; top: 3px; right: 3px; width: 20px; height: 20px; border-radius: 50%; background: rgba(0,0,0,0.55); color: #fff; border: none; font-size: 0.75rem; line-height: 1; cursor: pointer; }
-    .photo-add { width: 72px; height: 96px; border: 1.5px dashed var(--line); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; color: var(--mute); background: none; cursor: pointer; -webkit-tap-highlight-color: transparent; flex-shrink: 0; }
     .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 0.95rem; font-weight: 500; cursor: pointer; -webkit-tap-highlight-color: transparent; display: flex; align-items: center; justify-content: center; gap: 8px; }
     .btn-dark { background: var(--ink); color: var(--bg); }
     .btn-outline { background: var(--card); color: var(--ink); border: 1px solid var(--line); }
@@ -310,9 +310,11 @@
 
     <div class="field">
       <label>Fotos</label>
-      <div class="photo-strip" id="nova-photos">
-        <button class="photo-add" id="nova-photo-add">+</button>
+      <div class="photo-actions">
+        <button type="button" class="add-task" id="nova-cam-btn">📷 Tirar foto</button>
+        <button type="button" class="add-task" id="nova-gallery-btn">🖼️ Da galeria</button>
       </div>
+      <div class="photo-strip" id="nova-photos"></div>
     </div>
 
     <button class="btn btn-outline" id="nova-analyze" disabled>✨ Analisar com IA</button>
@@ -351,6 +353,7 @@
 </div>
 
 <input type="file" id="filePicker" accept="image/*" />
+<input type="file" id="novaCameraPicker" accept="image/*" capture="environment" />
 <input type="file" id="novaPicker" accept="image/*" multiple />
 <div class="toast" id="toast"></div>
 
@@ -766,7 +769,7 @@
     const strip = document.getElementById('nova-photos');
     strip.innerHTML = nova.photos.map((p, i) => `
       <div class="ph"><img src="${p.previewUrl}"><button class="rm" data-i="${i}">✕</button></div>
-    `).join('') + '<button class="photo-add" id="nova-photo-add">+</button>';
+    `).join('');
 
     strip.querySelectorAll('.rm').forEach(btn =>
       btn.addEventListener('click', () => {
@@ -774,19 +777,19 @@
         renderNovaPhotos();
         updateNovaButtons();
       }));
-    document.getElementById('nova-photo-add').addEventListener('click', () => {
-      document.getElementById('novaPicker').value = '';
-      document.getElementById('novaPicker').click();
-    });
   }
 
-  document.getElementById('nova-photo-add').addEventListener('click', () => {
+  document.getElementById('nova-cam-btn').addEventListener('click', () => {
+    document.getElementById('novaCameraPicker').value = '';
+    document.getElementById('novaCameraPicker').click();
+  });
+  document.getElementById('nova-gallery-btn').addEventListener('click', () => {
     document.getElementById('novaPicker').value = '';
     document.getElementById('novaPicker').click();
   });
 
-  document.getElementById('novaPicker').addEventListener('change', async e => {
-    const files = Array.from(e.target.files || []);
+  async function processNovaFiles(fileList) {
+    const files = Array.from(fileList || []);
     if (!files.length) return;
     for (const file of files) {
       try {
@@ -798,7 +801,10 @@
     }
     renderNovaPhotos();
     updateNovaButtons();
-  });
+  }
+
+  document.getElementById('novaCameraPicker').addEventListener('change', e => processNovaFiles(e.target.files));
+  document.getElementById('novaPicker').addEventListener('change', e => processNovaFiles(e.target.files));
 
   document.getElementById('nova-analyze').addEventListener('click', () => {
     const btn = document.getElementById('nova-analyze');
