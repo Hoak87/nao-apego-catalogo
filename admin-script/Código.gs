@@ -318,6 +318,27 @@ function _copyOrComputeValorCol_(sheet, sourceRow, targetRow, colIndex, computed
   targetCell.setValue(computedValue);
 }
 
+// Garante que a coluna "Origem Cadastro" existe no ESTOQUE (cria no final, sem mexer na
+// posição das colunas existentes) e marca todo o histórico já presente como "Manual" —
+// tudo que for cadastrado por essa ferramenta a partir de agora vai virar "Automático".
+// Roda sozinha e uma única vez, na primeira peça cadastrada após o deploy (idempotente).
+function _ensureOrigemCadastroColumn_(sheet) {
+  const lastCol = sheet.getLastColumn();
+  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(h => String(h).trim());
+  let col = headers.indexOf('Origem Cadastro');
+  if (col > -1) return col;
+
+  col = lastCol; // próxima coluna livre (0-indexado)
+  sheet.getRange(1, col + 1).setValue('Origem Cadastro');
+
+  const { lastRow } = _lastDataRow_(sheet, headers.indexOf('Código'));
+  if (lastRow > 1) {
+    const backfill = Array(lastRow - 1).fill(['Manual']);
+    sheet.getRange(2, col + 1, backfill.length, 1).setValues(backfill);
+  }
+  return col;
+}
+
 function createPiece(data) {
   if (!data.closet) throw new Error('Closet é obrigatório.');
   if (!data.descritivo) throw new Error('Descritivo é obrigatório.');
@@ -330,6 +351,7 @@ function createPiece(data) {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const estoque = ss.getSheetByName(SHEET_NAME);
+    _ensureOrigemCadastroColumn_(estoque);
     const headers = estoque.getRange(1, 1, 1, estoque.getLastColumn()).getValues()[0].map(h => String(h).trim());
     const colOf = name => headers.indexOf(name);
 
@@ -387,6 +409,7 @@ function createPiece(data) {
       'Foto': fotoStr,
       'Repasse': split.repasse,
       'Comissão': split.comissao,
+      'Origem Cadastro': 'Automático',
     };
     const estRow = headers.map(h => estValues[h] !== undefined ? estValues[h] : '');
     const novaLinha = estLastDataRow + 1;
