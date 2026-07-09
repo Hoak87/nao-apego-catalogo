@@ -301,7 +301,7 @@
 <div class="view" id="view-nova">
   <div class="nova-wrap" id="nova-wrap">
     <div class="nova-hint">
-      📷 Tire fotos da peça (frente e verso) e <strong>da etiqueta interna</strong> — é dela que a IA lê a marca e o tamanho.
+      📷 Tire fotos da peça (frente e verso) — essas vão pro site. A foto da etiqueta é só pra IA ler marca e tamanho, não aparece pro público.
     </div>
 
     <div class="field">
@@ -311,12 +311,20 @@
     </div>
 
     <div class="field">
-      <label>Fotos</label>
+      <label>Fotos do produto <span style="text-transform:none;font-weight:400;">— vão pro site</span></label>
       <div class="photo-actions">
         <button type="button" class="add-task" id="nova-cam-btn">📷 Tirar foto</button>
         <button type="button" class="add-task" id="nova-gallery-btn">🖼️ Da galeria</button>
       </div>
       <div class="photo-strip" id="nova-photos"></div>
+    </div>
+
+    <div class="field">
+      <label>Foto da etiqueta <span style="text-transform:none;font-weight:400;">— opcional, só pra IA, não vai pro site</span></label>
+      <div class="photo-actions">
+        <button type="button" class="add-task" id="nova-etiqueta-btn">🏷️ Tirar foto da etiqueta</button>
+      </div>
+      <div class="photo-strip" id="nova-etiqueta-strip"></div>
     </div>
 
     <button class="btn btn-outline" id="nova-analyze" disabled>✨ Analisar com IA</button>
@@ -364,6 +372,7 @@
 <input type="file" id="filePicker" accept="image/*" />
 <input type="file" id="novaCameraPicker" accept="image/*" capture="environment" />
 <input type="file" id="novaPicker" accept="image/*" multiple />
+<input type="file" id="novaEtiquetaPicker" accept="image/*" capture="environment" />
 <div class="toast" id="toast"></div>
 
 <script>
@@ -748,7 +757,9 @@
   }
 
   // ── Cadastro de nova peça ──────────────────────────────────
-  const nova = { photos: [], saving: false };
+  // nova.photos = fotos do produto (viram Foto/site). nova.etiqueta = foto única,
+  // só usada pra IA ler marca/tamanho — nunca sobe pro Drive nem entra no Foto.
+  const nova = { photos: [], etiqueta: null, saving: false };
   let pendingDraftCloset = null;
 
   // Persiste o rascunho em sessionStorage — o Android às vezes mata a aba ao abrir
@@ -760,6 +771,7 @@
         closet: document.getElementById('nova-closet').value,
         closetOutro: document.getElementById('nova-closet-outro').value,
         photos: nova.photos,
+        etiqueta: nova.etiqueta,
         desc: document.getElementById('nova-desc').value,
         marca: document.getElementById('nova-marca').value,
         tam: document.getElementById('nova-tam').value,
@@ -781,7 +793,9 @@
     if (!draft || (!draft.photos?.length && !draft.desc && !draft.marca && !draft.dictado)) return false;
 
     nova.photos = draft.photos || [];
+    nova.etiqueta = draft.etiqueta || null;
     renderNovaPhotos();
+    renderEtiqueta();
     document.getElementById('nova-desc').value    = draft.desc || '';
     document.getElementById('nova-marca').value   = draft.marca || '';
     document.getElementById('nova-tam').value     = draft.tam || '';
@@ -880,6 +894,35 @@
   document.getElementById('novaCameraPicker').addEventListener('change', e => processNovaFiles(e.target.files));
   document.getElementById('novaPicker').addEventListener('change', e => processNovaFiles(e.target.files));
 
+  function renderEtiqueta() {
+    const strip = document.getElementById('nova-etiqueta-strip');
+    if (!nova.etiqueta) { strip.innerHTML = ''; return; }
+    strip.innerHTML = `<div class="ph"><img src="${nova.etiqueta.previewUrl}"><button class="rm" id="nova-etiqueta-rm">✕</button></div>`;
+    document.getElementById('nova-etiqueta-rm').addEventListener('click', () => {
+      nova.etiqueta = null;
+      renderEtiqueta();
+      saveDraft();
+    });
+  }
+
+  document.getElementById('nova-etiqueta-btn').addEventListener('click', () => {
+    document.getElementById('novaEtiquetaPicker').value = '';
+    document.getElementById('novaEtiquetaPicker').click();
+  });
+
+  document.getElementById('novaEtiquetaPicker').addEventListener('change', async e => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    try {
+      const { base64, mimeType } = await compressImage(file);
+      nova.etiqueta = { base64, mimeType, previewUrl: 'data:' + mimeType + ';base64,' + base64 };
+      renderEtiqueta();
+      saveDraft();
+    } catch (err) {
+      showToast('Erro ao processar a foto da etiqueta.');
+    }
+  });
+
   document.getElementById('nova-analyze').addEventListener('click', () => {
     const btn = document.getElementById('nova-analyze');
     btn.disabled = true;
@@ -904,7 +947,10 @@
         showToast('IA indisponível — preencha manualmente.');
         console.error(err);
       })
-      .analyzeNewPiece(nova.photos.map(p => ({ base64: p.base64, mimeType: p.mimeType })));
+      .analyzeNewPiece(
+        [...nova.photos, ...(nova.etiqueta ? [nova.etiqueta] : [])]
+          .map(p => ({ base64: p.base64, mimeType: p.mimeType }))
+      );
   });
 
   document.getElementById('nova-dictado-btn').addEventListener('click', () => {
@@ -959,7 +1005,9 @@
       .withSuccessHandler(codigo => {
         nova.saving = false;
         nova.photos = [];
+        nova.etiqueta = null;
         renderNovaPhotos();
+        renderEtiqueta();
         ['nova-desc','nova-marca','nova-tam','nova-cor','nova-preco','nova-dictado'].forEach(id =>
           document.getElementById(id).value = '');
         const obs = document.getElementById('nova-obs');
