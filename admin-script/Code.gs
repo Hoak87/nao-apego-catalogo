@@ -179,6 +179,66 @@ function analyzeNewPiece(photos) {
   return JSON.parse(text);
 }
 
+// ─── CADASTRO POR DITADO (texto) ───────────────────────────────────────────
+// Mesma chave/modelo de analyzeNewPiece — só muda a entrada (texto ditado no
+// teclado do celular em vez de fotos) e o schema (aqui dá pra extrair preço também).
+const ANALYZE_TEXT_PROMPT =
+  'Você está extraindo dados de uma peça de brechó (moda feminina) a partir de uma descrição falada/ditada em português.\n\n' +
+  'Retorne:\n' +
+  '- marca: nome da marca, se mencionada. Se não, string vazia — NUNCA chute.\n' +
+  '- descritivo: nome curto da peça começando pelo tipo, com iniciais maiúsculas. ' +
+  'O tipo deve ser uma destas palavras: Vestido, Blusa, Camiseta, Camisa, Top, Body, Calça, Saia, Shorts, Macacão, ' +
+  'Casaco, Jaqueta, Blazer, Colete, Tricô, Bota, Sandália, Sapato, Tênis, Bolsa, Acessório. ' +
+  'Exemplo: "jaqueta bomber preta com brilho" → "Jaqueta Bomber".\n' +
+  '- tamanho: se mencionado (PP, P, M, G, GG ou numérico). Se não, string vazia.\n' +
+  '- cor: cor predominante em português, no feminino quando aplicável (detalhes como "com brilho" vão em observações, não na cor).\n' +
+  '- preco: apenas o número mencionado, sem "R$" nem "reais" (ex: "200 reais" → "200"). Se não mencionado, string vazia.\n' +
+  '- observacoes: detalhes extras mencionados que não couberam nos campos acima.';
+
+const ANALYZE_TEXT_SCHEMA = {
+  type: 'object',
+  properties: {
+    marca:       { type: 'string' },
+    descritivo:  { type: 'string' },
+    tamanho:     { type: 'string' },
+    cor:         { type: 'string' },
+    preco:       { type: 'string' },
+    observacoes: { type: 'string' },
+  },
+  required: ['marca', 'descritivo', 'tamanho', 'cor', 'preco', 'observacoes'],
+  additionalProperties: false,
+};
+
+// Extrai os campos da peça a partir de um texto ditado (ex: teclado do iPhone → campo de texto).
+function analyzeVoiceText(texto) {
+  const apiKey = PropertiesService.getScriptProperties().getProperty('ANTHROPIC_API_KEY');
+  if (!apiKey) throw new Error('Chave da IA não configurada. Adicione ANTHROPIC_API_KEY nas Propriedades do script.');
+
+  texto = String(texto || '').trim();
+  if (!texto) throw new Error('Descrição vazia.');
+
+  const resp = UrlFetchApp.fetch('https://api.anthropic.com/v1/messages', {
+    method: 'post',
+    contentType: 'application/json',
+    headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+    payload: JSON.stringify({
+      model: ANTHROPIC_MODEL,
+      max_tokens: 512,
+      output_config: { format: { type: 'json_schema', schema: ANALYZE_TEXT_SCHEMA } },
+      messages: [{ role: 'user', content: ANALYZE_TEXT_PROMPT + '\n\nDescrição: "' + texto + '"' }],
+    }),
+    muteHttpExceptions: true,
+  });
+
+  const code = resp.getResponseCode();
+  const body = JSON.parse(resp.getContentText());
+  if (code !== 200) {
+    throw new Error('Erro na extração (' + code + '): ' + ((body.error && body.error.message) || 'desconhecido'));
+  }
+  const text2 = (body.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
+  return JSON.parse(text2);
+}
+
 // Prefixo do código a partir das iniciais do closet: "Bea Romano" → BR
 function _closetPrefix(closet) {
   const clean = String(closet).normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();

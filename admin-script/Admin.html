@@ -320,6 +320,13 @@
     <button class="btn btn-outline" id="nova-analyze" disabled>✨ Analisar com IA</button>
     <div class="ia-note" id="nova-obs"></div>
 
+    <div class="field">
+      <label>Ou dite a descrição</label>
+      <textarea id="nova-dictado" rows="2" placeholder="ex: jaqueta bomber preta, com brilho, marca X, tamanho P, 200 reais"></textarea>
+      <div class="nova-hint" style="margin-top:4px;">🎙️ Toque no microfone do teclado pra ditar, depois toque em "Extrair"</div>
+    </div>
+    <button class="btn btn-outline" id="nova-dictado-btn">✨ Extrair da descrição</button>
+
     <div class="field"><label>Descritivo</label><input id="nova-desc" type="text" placeholder="ex: Vestido Midi Floral" /></div>
     <div style="display:flex;gap:10px;">
       <div class="field" style="flex:1;"><label>Marca</label><input id="nova-marca" type="text" /></div>
@@ -830,6 +837,37 @@
         console.error(err);
       })
       .analyzeNewPiece(nova.photos.map(p => ({ base64: p.base64, mimeType: p.mimeType })));
+  });
+
+  document.getElementById('nova-dictado-btn').addEventListener('click', () => {
+    const texto = document.getElementById('nova-dictado').value.trim();
+    if (!texto) { showToast('Dite ou digite uma descrição primeiro.'); return; }
+
+    const btn = document.getElementById('nova-dictado-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner"></div> extraindo…';
+
+    google.script.run
+      .withSuccessHandler(res => {
+        if (res.descritivo) document.getElementById('nova-desc').value  = res.descritivo;
+        if (res.marca)      document.getElementById('nova-marca').value = res.marca;
+        if (res.tamanho)    document.getElementById('nova-tam').value   = res.tamanho;
+        if (res.cor)        document.getElementById('nova-cor').value   = res.cor;
+        if (res.preco)      document.getElementById('nova-preco').value = res.preco;
+        const obs = document.getElementById('nova-obs');
+        if (res.observacoes) { obs.textContent = '💡 ' + res.observacoes; obs.classList.add('show'); }
+        btn.disabled = false;
+        btn.innerHTML = '✨ Extrair da descrição';
+        updateNovaButtons();
+        showToast('Confira os campos e ajuste se precisar ✓');
+      })
+      .withFailureHandler(err => {
+        btn.disabled = false;
+        btn.innerHTML = '✨ Extrair da descrição';
+        showToast('Erro ao extrair — preencha manualmente.');
+        console.error(err);
+      })
+      .analyzeVoiceText(texto);
   });
 
   document.getElementById('nova-save').addEventListener('click', () => {
