@@ -15,52 +15,74 @@ const LOGIN_MAX_TENTATIVAS     = 5;
 const LOGIN_JANELA_SEGUNDOS    = 600;  // tentativas contam por 10 min
 const LOGIN_BLOQUEIO_SEGUNDOS  = 300;  // bloqueio de 5 min ao estourar o limite
 
+// Tudo aqui é "fail-open": se o CacheService falhar por qualquer motivo, o login
+// segue normalmente em vez de travar a página — nunca pode ser a proteção contra
+// força bruta a deixar a própria Lu/Henrique fora do admin.
 function _loginBloqueado_() {
-  return !!CacheService.getScriptCache().get('login_bloqueado');
+  try {
+    return !!CacheService.getScriptCache().get('login_bloqueado');
+  } catch (e) {
+    return false;
+  }
 }
 
 function _registrarTentativaFalha_() {
-  const cache = CacheService.getScriptCache();
-  const tentativas = (parseInt(cache.get('login_tentativas'), 10) || 0) + 1;
-  cache.put('login_tentativas', String(tentativas), LOGIN_JANELA_SEGUNDOS);
-  if (tentativas >= LOGIN_MAX_TENTATIVAS) {
-    cache.put('login_bloqueado', '1', LOGIN_BLOQUEIO_SEGUNDOS);
+  try {
+    const cache = CacheService.getScriptCache();
+    const tentativas = (parseInt(cache.get('login_tentativas'), 10) || 0) + 1;
+    cache.put('login_tentativas', String(tentativas), LOGIN_JANELA_SEGUNDOS);
+    if (tentativas >= LOGIN_MAX_TENTATIVAS) {
+      cache.put('login_bloqueado', '1', LOGIN_BLOQUEIO_SEGUNDOS);
+    }
+  } catch (e) {
+    // não registrar a tentativa não deve impedir a próxima tentativa de login
   }
 }
 
 function _limparTentativasLogin_() {
-  const cache = CacheService.getScriptCache();
-  cache.remove('login_tentativas');
-  cache.remove('login_bloqueado');
+  try {
+    const cache = CacheService.getScriptCache();
+    cache.remove('login_tentativas');
+    cache.remove('login_bloqueado');
+  } catch (e) {}
 }
 
 function doGet(e) {
-  const pwd = (e && e.parameter && e.parameter.pwd) || '';
-  const senhaConfigurada = PropertiesService.getScriptProperties().getProperty('ADMIN_PASSWORD') || '';
+  try {
+    const pwd = (e && e.parameter && e.parameter.pwd) || '';
+    const senhaConfigurada = PropertiesService.getScriptProperties().getProperty('ADMIN_PASSWORD') || '';
 
-  if (_loginBloqueado_()) {
-    return HtmlService
-      .createHtmlOutput(loginHtml(false, true))
-      .setTitle('não apego')
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
-  }
-
-  if (!senhaConfigurada || pwd !== senhaConfigurada) {
-    if (pwd) {
-      Utilities.sleep(1500); // atrasa força bruta — cada tentativa errada custa 1,5s
-      _registrarTentativaFalha_();
+    if (_loginBloqueado_()) {
+      return HtmlService
+        .createHtmlOutput(loginHtml(false, true))
+        .setTitle('não apego')
+        .addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
     }
-    return HtmlService
-      .createHtmlOutput(loginHtml(!!pwd, false))
-      .setTitle('não apego')
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
-  }
 
-  _limparTentativasLogin_();
-  return HtmlService
-    .createHtmlOutputFromFile('Admin')
-    .setTitle('não apego — gestão')
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1.0, maximum-scale=1.0');
+    if (!senhaConfigurada || pwd !== senhaConfigurada) {
+      if (pwd) {
+        Utilities.sleep(1500); // atrasa força bruta — cada tentativa errada custa 1,5s
+        _registrarTentativaFalha_();
+      }
+      return HtmlService
+        .createHtmlOutput(loginHtml(!!pwd, false))
+        .setTitle('não apego')
+        .addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
+    }
+
+    _limparTentativasLogin_();
+    return HtmlService
+      .createHtmlOutputFromFile('Admin')
+      .setTitle('não apego — gestão')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1.0, maximum-scale=1.0');
+  } catch (err) {
+    // Nunca deixa a página em branco sem explicação — mostra o erro real na tela.
+    return HtmlService.createHtmlOutput(
+      '<div style="font-family:-apple-system,sans-serif;padding:24px;color:#3A3632;line-height:1.5;">' +
+      '<b>Erro ao carregar o admin:</b><br>' + (err && err.message ? err.message : String(err)) +
+      '</div>'
+    );
+  }
 }
 
 // erro = true quando o usuário acabou de tentar uma senha e ela veio errada
