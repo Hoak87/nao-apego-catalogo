@@ -793,12 +793,23 @@
     return true;
   }
 
+  // Lembra o último closet usado (localStorage — sobrevive a reload e a dias diferentes),
+  // porque a tendência é cadastrar várias peças seguidas do mesmo closet.
   function populateClosetSelect() {
     const sel = document.getElementById('nova-closet');
     const closets = getClosets();
+    let lastClosetUsed = '';
+    try { lastClosetUsed = localStorage.getItem('lastClosetUsed') || ''; } catch (e) {}
+
+    // Se o último closet usado ainda não está na lista (ex: closet novo, sessão não recarregou
+    // os dados ainda), injeta ele mesmo assim — senão ela precisaria retipar "outro closet".
+    const allClosets = lastClosetUsed && !closets.includes(lastClosetUsed)
+      ? [...closets, lastClosetUsed].sort((a, b) => a.localeCompare(b, 'pt-BR'))
+      : closets;
+
     sel.innerHTML =
-      '<option value="" disabled selected>selecione…</option>' +
-      closets.map(c => `<option value="${c}">${c}</option>`).join('') +
+      '<option value="" disabled' + (lastClosetUsed ? '' : ' selected') + '>selecione…</option>' +
+      allClosets.map(c => `<option value="${c}"${c === lastClosetUsed ? ' selected' : ''}>${c}</option>`).join('') +
       '<option value="__outro__">outro closet…</option>';
   }
 
@@ -954,6 +965,12 @@
         const obs = document.getElementById('nova-obs');
         obs.textContent = ''; obs.classList.remove('show');
         btn.innerHTML = 'Salvar no catálogo';
+        if (payload.closet) {
+          try { localStorage.setItem('lastClosetUsed', payload.closet); } catch (e) {}
+          populateClosetSelect(); // refaz a lista já com esse closet selecionado, pra próxima peça
+          document.getElementById('nova-closet-outro').value = '';
+          document.getElementById('nova-closet-outro').style.display = 'none';
+        }
         updateNovaButtons();
         clearDraft();
         showToast(`${codigo} cadastrada no catálogo ✓`, 3500);
