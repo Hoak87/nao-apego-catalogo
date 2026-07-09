@@ -300,6 +300,24 @@ function _lastDataRow_(sheet, codigoColIndex) {
   return { lastRow: lastRow, codigoValues: codigoValues };
 }
 
+// Copia a fórmula da linha de cima pra "Valor Repasse"/"Valor Comissão" (o Sheets ajusta as
+// referências relativas sozinho, igual acontece ao inserir uma linha manualmente). Se a linha
+// de cima não tiver fórmula (só valor estático), calcula direto em vez de copiar um número errado.
+function _copyOrComputeValorCol_(sheet, sourceRow, targetRow, colIndex, computedValue) {
+  if (colIndex < 0) return;
+  const targetCell = sheet.getRange(targetRow, colIndex + 1);
+  if (sourceRow > 1) {
+    const sourceCell = sheet.getRange(sourceRow, colIndex + 1);
+    if (sourceCell.getFormula()) {
+      sourceCell.copyTo(targetCell);
+      return;
+    }
+    const fmt = sourceCell.getNumberFormat();
+    if (fmt) targetCell.setNumberFormat(fmt);
+  }
+  targetCell.setValue(computedValue);
+}
+
 function createPiece(data) {
   if (!data.closet) throw new Error('Closet é obrigatório.');
   if (!data.descritivo) throw new Error('Descritivo é obrigatório.');
@@ -371,9 +389,17 @@ function createPiece(data) {
       'Comissão': split.comissao,
     };
     const estRow = headers.map(h => estValues[h] !== undefined ? estValues[h] : '');
-    estoque.getRange(estLastDataRow + 1, 1, 1, estRow.length).setValues([estRow]);
-    if (repasseCol > -1)  estoque.getRange(estLastDataRow + 1, repasseCol + 1).setNumberFormat('0%');
-    if (comissaoCol > -1) estoque.getRange(estLastDataRow + 1, comissaoCol + 1).setNumberFormat('0%');
+    const novaLinha = estLastDataRow + 1;
+    estoque.getRange(novaLinha, 1, 1, estRow.length).setValues([estRow]);
+    if (repasseCol > -1)  estoque.getRange(novaLinha, repasseCol + 1).setNumberFormat('0%');
+    if (comissaoCol > -1) estoque.getRange(novaLinha, comissaoCol + 1).setNumberFormat('0%');
+
+    // ── Valor Repasse/Valor Comissão: mesma fórmula da linha de cima (copia e o Sheets
+    // ajusta as referências sozinho); se a linha de cima não tiver fórmula, calcula direto. ──
+    const valorRepasseCol  = colOf('Valor Repasse');
+    const valorComissaoCol = colOf('Valor Comissão');
+    _copyOrComputeValorCol_(estoque, estLastDataRow, novaLinha, valorRepasseCol, preco * split.repasse);
+    _copyOrComputeValorCol_(estoque, estLastDataRow, novaLinha, valorComissaoCol, preco * split.comissao);
 
     // ── Linha no CATALOGO (mesmo formato do gerarCatalogo) — sem dados financeiros ──
     const catalogo = ss.getSheetByName('CATALOGO');
