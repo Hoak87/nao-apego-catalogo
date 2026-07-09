@@ -119,34 +119,43 @@ function getOrCreateFolder() {
 // Propriedades do script → ANTHROPIC_API_KEY
 const ANTHROPIC_MODEL = 'claude-haiku-4-5';
 
+// Mesmos valores usados pelo dicionário do site (index.html: TIPO_KEYWORDS / COLOR_MAP).
+// Forçar a IA a escolher só entre esses valores (via enum) garante que o catálogo público
+// sempre bate com os filtros do site — sem depender de normalização de texto livre depois.
+const TIPOS_PECA = ['Vestido', 'Blusa', 'Camiseta', 'Camisa', 'Top', 'Body', 'Calça', 'Saia', 'Shorts', 'Macacão',
+  'Casaco', 'Jaqueta', 'Blazer', 'Colete', 'Tricô', 'Bota', 'Sandália', 'Sapato', 'Tênis', 'Bolsa', 'Acessório'];
+const CORES_CATALOGO = ['Animal Print', 'Estampado / Floral', 'Jeans', 'Preto', 'Branco', 'Off-white / Cru',
+  'Bege / Nude', 'Rosa', 'Vermelho / Vinho', 'Laranja', 'Amarelo / Mostarda', 'Verde', 'Azul', 'Cinza',
+  'Marrom / Terra', 'Roxo / Lilás', 'Dourado / Prata'];
+
 const ANALYZE_PROMPT =
   'Você está analisando fotos de uma peça de moda feminina de brechó para cadastro em catálogo. ' +
   'As fotos podem incluir a peça (frente/verso) e a etiqueta interna com marca e tamanho.\n\n' +
   'Retorne:\n' +
   '- marca: o nome da marca lido na etiqueta. Se nenhuma etiqueta de marca estiver visível, retorne string vazia — NUNCA chute.\n' +
-  '- descritivo: nome curto da peça começando pelo tipo, com iniciais maiúsculas. ' +
-  'O tipo deve ser uma destas palavras: Vestido, Blusa, Camiseta, Camisa, Top, Body, Calça, Saia, Shorts, Macacão, ' +
-  'Casaco, Jaqueta, Blazer, Colete, Tricô, Bota, Sandália, Sapato, Tênis, Bolsa, Acessório. ' +
-  'Exemplos: "Vestido Midi Floral", "Calça Jeans Cintura Alta", "Blusa Ajuste Frontal".\n' +
+  '- tipo: o tipo da peça, escolhido estritamente entre as opções do enum.\n' +
+  '- detalhe: 2 a 4 palavras curtas complementando o tipo (material, estampa, corte), com iniciais maiúsculas — não repita o tipo aqui. ' +
+  'Exemplos: "Midi Floral", "Jeans Cintura Alta", "Ajuste Frontal", "Puffer Brilhante".\n' +
   '- tamanho: lido na etiqueta (PP, P, M, G, GG ou numérico como 36, 38). Se não visível, string vazia — NUNCA chute.\n' +
-  '- cor: cor predominante em português, no feminino quando aplicável. ' +
-  'Exemplos: Preta, Branca, Off-white, Bege, Rosa, Vermelha, Laranja, Amarela, Verde, Azul, Jeans, Cinza, Marrom, Roxa, Dourada, Estampada, Animal Print.\n' +
+  '- cor: a opção do enum mais próxima da cor predominante da peça. Se genuinamente não der pra identificar, string vazia.\n' +
   '- observacoes: detalhes úteis para a lojista revisar: material aparente, estado, detalhes de modelagem, avisos (ex: "etiqueta de tamanho não visível").';
 
 const ANALYZE_SCHEMA = {
   type: 'object',
   properties: {
     marca:       { type: 'string' },
-    descritivo:  { type: 'string' },
+    tipo:        { type: 'string', enum: TIPOS_PECA },
+    detalhe:     { type: 'string' },
     tamanho:     { type: 'string' },
-    cor:         { type: 'string' },
+    cor:         { type: 'string', enum: CORES_CATALOGO.concat(['']) },
     observacoes: { type: 'string' },
   },
-  required: ['marca', 'descritivo', 'tamanho', 'cor', 'observacoes'],
+  required: ['marca', 'tipo', 'detalhe', 'tamanho', 'cor', 'observacoes'],
   additionalProperties: false,
 };
 
 // Analisa as fotos com o Claude e retorna {marca, descritivo, tamanho, cor, observacoes}
+// (descritivo já vem composto como "tipo + detalhe", ex: "Jaqueta Puffer Brilhante")
 function analyzeNewPiece(photos) {
   const apiKey = PropertiesService.getScriptProperties().getProperty('ANTHROPIC_API_KEY');
   if (!apiKey) throw new Error('Chave da IA não configurada. Adicione ANTHROPIC_API_KEY nas Propriedades do script.');
@@ -176,7 +185,14 @@ function analyzeNewPiece(photos) {
     throw new Error('Erro na análise (' + code + '): ' + ((body.error && body.error.message) || 'desconhecido'));
   }
   const text = (body.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
-  return JSON.parse(text);
+  const parsed = JSON.parse(text);
+  return {
+    marca: parsed.marca,
+    descritivo: (parsed.tipo + (parsed.detalhe ? ' ' + parsed.detalhe : '')).trim(),
+    tamanho: parsed.tamanho,
+    cor: parsed.cor,
+    observacoes: parsed.observacoes,
+  };
 }
 
 // ─── CADASTRO POR DITADO (texto) ───────────────────────────────────────────
@@ -186,26 +202,26 @@ const ANALYZE_TEXT_PROMPT =
   'Você está extraindo dados de uma peça de brechó (moda feminina) a partir de uma descrição falada/ditada em português.\n\n' +
   'Retorne:\n' +
   '- marca: nome da marca, se mencionada. Se não, string vazia — NUNCA chute.\n' +
-  '- descritivo: nome curto da peça começando pelo tipo, com iniciais maiúsculas. ' +
-  'O tipo deve ser uma destas palavras: Vestido, Blusa, Camiseta, Camisa, Top, Body, Calça, Saia, Shorts, Macacão, ' +
-  'Casaco, Jaqueta, Blazer, Colete, Tricô, Bota, Sandália, Sapato, Tênis, Bolsa, Acessório. ' +
-  'Exemplo: "jaqueta bomber preta com brilho" → "Jaqueta Bomber".\n' +
+  '- tipo: o tipo da peça, escolhido estritamente entre as opções do enum.\n' +
+  '- detalhe: 2 a 4 palavras curtas complementando o tipo (material, estampa, corte), com iniciais maiúsculas — não repita o tipo aqui. ' +
+  'Exemplo: em "jaqueta bomber preta com brilho", tipo="Jaqueta", detalhe="Bomber Brilhante".\n' +
   '- tamanho: se mencionado (PP, P, M, G, GG ou numérico). Se não, string vazia.\n' +
-  '- cor: cor predominante em português, no feminino quando aplicável (detalhes como "com brilho" vão em observações, não na cor).\n' +
+  '- cor: a opção do enum mais próxima da cor mencionada. Se não mencionada, string vazia.\n' +
   '- preco: apenas o número mencionado, sem "R$" nem "reais" (ex: "200 reais" → "200"). Se não mencionado, string vazia.\n' +
-  '- observacoes: detalhes extras mencionados que não couberam nos campos acima.';
+  '- observacoes: detalhes extras mencionados que não couberam nos campos acima (ex: "com brilho" quando não cabe na cor).';
 
 const ANALYZE_TEXT_SCHEMA = {
   type: 'object',
   properties: {
     marca:       { type: 'string' },
-    descritivo:  { type: 'string' },
+    tipo:        { type: 'string', enum: TIPOS_PECA },
+    detalhe:     { type: 'string' },
     tamanho:     { type: 'string' },
-    cor:         { type: 'string' },
+    cor:         { type: 'string', enum: CORES_CATALOGO.concat(['']) },
     preco:       { type: 'string' },
     observacoes: { type: 'string' },
   },
-  required: ['marca', 'descritivo', 'tamanho', 'cor', 'preco', 'observacoes'],
+  required: ['marca', 'tipo', 'detalhe', 'tamanho', 'cor', 'preco', 'observacoes'],
   additionalProperties: false,
 };
 
@@ -236,7 +252,15 @@ function analyzeVoiceText(texto) {
     throw new Error('Erro na extração (' + code + '): ' + ((body.error && body.error.message) || 'desconhecido'));
   }
   const text2 = (body.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
-  return JSON.parse(text2);
+  const parsed = JSON.parse(text2);
+  return {
+    marca: parsed.marca,
+    descritivo: (parsed.tipo + (parsed.detalhe ? ' ' + parsed.detalhe : '')).trim(),
+    tamanho: parsed.tamanho,
+    cor: parsed.cor,
+    preco: parsed.preco,
+    observacoes: parsed.observacoes,
+  };
 }
 
 // Prefixo do código a partir das iniciais do closet: "Bea Romano" → BR
