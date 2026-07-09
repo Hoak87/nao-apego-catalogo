@@ -11,9 +11,10 @@ const VISIBLE_STATUS = ['Disponível'];   // só peças disponíveis aparecem no
 // como web app), então o controle é global: poucas tentativas erradas bloqueiam
 // o login pra todo mundo por alguns minutos, e cada tentativa errada já sofre
 // um atraso — torna inviável testar senhas em massa.
-const LOGIN_MAX_TENTATIVAS     = 5;
-const LOGIN_JANELA_SEGUNDOS    = 600;  // tentativas contam por 10 min
-const LOGIN_BLOQUEIO_SEGUNDOS  = 300;  // bloqueio de 5 min ao estourar o limite
+const LOGIN_MAX_TENTATIVAS      = 5;
+const LOGIN_JANELA_SEGUNDOS     = 600;               // tentativas contam por 10 min
+const LOGIN_BLOQUEIOS_SEGUNDOS  = [180, 300, 600];   // 3min → 5min → 10min (repete o último depois)
+const LOGIN_NIVEL_TTL_SEGUNDOS  = 21600;             // 6h (máximo do CacheService) — "memória" da escalada
 
 // Tudo aqui é "fail-open": se o CacheService falhar por qualquer motivo, o login
 // segue normalmente em vez de travar a página — nunca pode ser a proteção contra
@@ -31,8 +32,13 @@ function _registrarTentativaFalha_() {
     const cache = CacheService.getScriptCache();
     const tentativas = (parseInt(cache.get('login_tentativas'), 10) || 0) + 1;
     cache.put('login_tentativas', String(tentativas), LOGIN_JANELA_SEGUNDOS);
+
     if (tentativas >= LOGIN_MAX_TENTATIVAS) {
-      cache.put('login_bloqueado', '1', LOGIN_BLOQUEIO_SEGUNDOS);
+      const nivel = parseInt(cache.get('login_nivel'), 10) || 0;
+      const duracao = LOGIN_BLOQUEIOS_SEGUNDOS[Math.min(nivel, LOGIN_BLOQUEIOS_SEGUNDOS.length - 1)];
+      cache.put('login_bloqueado', '1', duracao);
+      cache.put('login_nivel', String(nivel + 1), LOGIN_NIVEL_TTL_SEGUNDOS);
+      cache.remove('login_tentativas'); // reinicia a contagem pro próximo ciclo de 5
     }
   } catch (e) {
     // não registrar a tentativa não deve impedir a próxima tentativa de login
@@ -44,6 +50,7 @@ function _limparTentativasLogin_() {
     const cache = CacheService.getScriptCache();
     cache.remove('login_tentativas');
     cache.remove('login_bloqueado');
+    cache.remove('login_nivel'); // login certo reseta a escalada de bloqueio
   } catch (e) {}
 }
 
@@ -95,7 +102,8 @@ function loginHtml(erro, bloqueado) {
     '.pwd-wrap{position:relative;margin-bottom:12px}' +
     'input{width:100%;padding:10px 40px 10px 14px;border:1px solid #D8D2C4;border-radius:8px;font-size:1rem;outline:none;box-sizing:border-box}' +
     'input:focus{border-color:#B14A2C}' +
-    '.eye{position:absolute;right:2px;top:2px;bottom:2px;background:none;border:none;cursor:pointer;padding:0 10px;font-size:1rem;color:#8B8278;line-height:1}' +
+    '.eye{position:absolute;right:2px;top:2px;bottom:2px;background:none;border:none;cursor:pointer;padding:0 10px;color:#8B8278;display:flex;align-items:center}' +
+    '.eye svg{display:block;width:18px;height:18px}' +
     'button[type=submit]{width:100%;padding:11px;background:#121110;color:#F2F0EB;border:none;border-radius:8px;font-size:.95rem;cursor:pointer}' +
     '.err{color:#e74c3c;font-size:.82rem;margin-top:10px;display:none}.err.show{display:block}' +
     '.aviso{font-size:.85rem;color:#3A3632;line-height:1.5}' +
@@ -116,15 +124,18 @@ function loginHtml(erro, bloqueado) {
     '<body><div class="box" id="box"><div class="logo">não apego</div>' +
     '<form id="f">' +
     '<div class="pwd-wrap"><input type="password" id="pwd" placeholder="senha" autofocus autocomplete="current-password"/>' +
-    '<button type="button" class="eye" id="eye">👁️</button></div>' +
+    '<button type="button" class="eye" id="eye" aria-label="mostrar senha"></button></div>' +
     '<button type="submit">entrar</button>' +
     '<div class="err' + (erro ? ' show' : '') + '" id="err">senha incorreta</div>' +
     '</form></div>' +
     '<script>' +
     (erro ? 'document.getElementById("box").classList.add("shake");document.getElementById("pwd").value="";' : '') +
-    'document.getElementById("eye").addEventListener("click",function(){' +
+    'var EYE_ON=\'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>\';' +
+    'var EYE_OFF=\'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0112 19c-7 0-11-7-11-7a21.6 21.6 0 015.06-5.94"/><path d="M9.9 4.24A10.4 10.4 0 0112 4c7 0 11 7 11 7a21.7 21.7 0 01-3.22 4.36"/><path d="M14.12 14.12a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>\';' +
+    'var eyeBtn=document.getElementById("eye");eyeBtn.innerHTML=EYE_ON;' +
+    'eyeBtn.addEventListener("click",function(){' +
     'var i=document.getElementById("pwd");var show=i.type==="password";' +
-    'i.type=show?"text":"password";this.textContent=show?"🙈":"👁️";i.focus();});' +
+    'i.type=show?"text":"password";eyeBtn.innerHTML=show?EYE_OFF:EYE_ON;i.focus();});' +
     'document.getElementById("f").addEventListener("submit",function(e){' +
     'e.preventDefault();var p=document.getElementById("pwd").value;if(!p)return;' +
     'location.href=location.href.split("?")[0]+"?pwd="+encodeURIComponent(p);})' +
