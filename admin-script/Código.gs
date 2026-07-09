@@ -5,6 +5,20 @@ const VISIBLE_STATUS = ['Disponível'];   // só peças disponíveis aparecem no
 const ADMIN_PASSWORD = 'naoapego2026';  // troque pela senha que quiser
 // ──────────────────────────────────────────────────────────────────────────
 
+// TEMP — debug do bug "peça não salva na planilha". Remover depois.
+function debugInfoBackend() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_NAME);
+  const lastRow = sheet.getLastRow();
+  const lastRowData = lastRow > 1 ? sheet.getRange(lastRow, 1, 1, sheet.getLastColumn()).getValues()[0] : [];
+  return {
+    ssId: ss.getId(),
+    ssUrl: ss.getUrl(),
+    estoqueLastRow: lastRow,
+    estoqueLastRowData: lastRowData,
+  };
+}
+
 function doGet(e) {
   const pwd = (e && e.parameter && e.parameter.pwd) || '';
 

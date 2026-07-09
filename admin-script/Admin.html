@@ -243,6 +243,8 @@
       </div>
     </div>
   </div>
+
+  <div style="text-align:center;font-size:.66rem;color:var(--mute);padding:16px 0 8px;" onclick="debugInfo()">hub de gestão · v0.2</div>
 </div>
 
 <!-- ── TAREFAS ── -->
@@ -577,6 +579,14 @@
         renderFilter();
         renderList();
         populateClosetSelect();
+        if (pendingDraftCloset) {
+          document.getElementById('nova-closet').value = pendingDraftCloset.closet || '';
+          document.getElementById('nova-closet-outro').value = pendingDraftCloset.closetOutro || '';
+          document.getElementById('nova-closet-outro').style.display =
+            pendingDraftCloset.closet === '__outro__' ? 'block' : 'none';
+          pendingDraftCloset = null;
+          updateNovaButtons();
+        }
         document.getElementById('gallery-hint').style.display = 'block';
         document.getElementById('search-wrap').style.display  = 'block';
       })
@@ -739,6 +749,49 @@
 
   // ── Cadastro de nova peça ──────────────────────────────────
   const nova = { photos: [], saving: false };
+  let pendingDraftCloset = null;
+
+  // Persiste o rascunho em sessionStorage — o Android às vezes mata a aba ao abrir
+  // a câmera nativa e recarrega a página do zero ao voltar; sem isso, a Lu perderia
+  // fotos e campos já preenchidos.
+  function saveDraft() {
+    try {
+      sessionStorage.setItem('novaDraft', JSON.stringify({
+        closet: document.getElementById('nova-closet').value,
+        closetOutro: document.getElementById('nova-closet-outro').value,
+        photos: nova.photos,
+        desc: document.getElementById('nova-desc').value,
+        marca: document.getElementById('nova-marca').value,
+        tam: document.getElementById('nova-tam').value,
+        cor: document.getElementById('nova-cor').value,
+        preco: document.getElementById('nova-preco').value,
+        dictado: document.getElementById('nova-dictado').value,
+      }));
+    } catch (e) { /* sessionStorage indisponível/cheio — segue sem persistir */ }
+  }
+
+  function clearDraft() {
+    try { sessionStorage.removeItem('novaDraft'); } catch (e) {}
+  }
+
+  // Retorna true se havia rascunho e ele foi restaurado (fotos e/ou campos).
+  function restoreNovaDraft() {
+    let draft;
+    try { draft = JSON.parse(sessionStorage.getItem('novaDraft') || 'null'); } catch (e) { return false; }
+    if (!draft || (!draft.photos?.length && !draft.desc && !draft.marca && !draft.dictado)) return false;
+
+    nova.photos = draft.photos || [];
+    renderNovaPhotos();
+    document.getElementById('nova-desc').value    = draft.desc || '';
+    document.getElementById('nova-marca').value   = draft.marca || '';
+    document.getElementById('nova-tam').value     = draft.tam || '';
+    document.getElementById('nova-cor').value     = draft.cor || '';
+    document.getElementById('nova-preco').value   = draft.preco || '';
+    document.getElementById('nova-dictado').value = draft.dictado || '';
+    pendingDraftCloset = { closet: draft.closet, closetOutro: draft.closetOutro };
+    updateNovaButtons();
+    return true;
+  }
 
   function populateClosetSelect() {
     const sel = document.getElementById('nova-closet');
@@ -753,6 +806,7 @@
     document.getElementById('nova-closet-outro').style.display =
       e.target.value === '__outro__' ? 'block' : 'none';
     updateNovaButtons();
+    saveDraft();
   });
 
   function novaClosetValue() {
@@ -769,8 +823,8 @@
       !nova.photos.length || !novaClosetValue() || !desc || !preco || nova.saving;
   }
 
-  ['nova-preco', 'nova-desc', 'nova-closet-outro'].forEach(id =>
-    document.getElementById(id).addEventListener('input', updateNovaButtons));
+  ['nova-preco', 'nova-desc', 'nova-marca', 'nova-tam', 'nova-cor', 'nova-closet-outro', 'nova-dictado'].forEach(id =>
+    document.getElementById(id).addEventListener('input', () => { updateNovaButtons(); saveDraft(); }));
 
   function renderNovaPhotos() {
     const strip = document.getElementById('nova-photos');
@@ -783,6 +837,7 @@
         nova.photos.splice(parseInt(btn.dataset.i), 1);
         renderNovaPhotos();
         updateNovaButtons();
+        saveDraft();
       }));
   }
 
@@ -801,13 +856,14 @@
     for (const file of files) {
       try {
         const { base64, mimeType } = await compressImage(file);
-        nova.photos.push({ base64, mimeType, previewUrl: URL.createObjectURL(file) });
+        nova.photos.push({ base64, mimeType, previewUrl: 'data:' + mimeType + ';base64,' + base64 });
       } catch (err) {
         showToast('Erro ao processar uma foto.');
       }
     }
     renderNovaPhotos();
     updateNovaButtons();
+    saveDraft();
   }
 
   document.getElementById('novaCameraPicker').addEventListener('change', e => processNovaFiles(e.target.files));
@@ -828,6 +884,7 @@
         if (res.observacoes) { obs.textContent = '💡 ' + res.observacoes; obs.classList.add('show'); }
         btn.innerHTML = '✨ Analisar com IA';
         updateNovaButtons();
+        saveDraft();
         showToast('Confira os campos e ajuste se precisar ✓');
       })
       .withFailureHandler(err => {
@@ -859,6 +916,7 @@
         btn.disabled = false;
         btn.innerHTML = '✨ Extrair da descrição';
         updateNovaButtons();
+        saveDraft();
         showToast('Confira os campos e ajuste se precisar ✓');
       })
       .withFailureHandler(err => {
@@ -891,12 +949,13 @@
         nova.saving = false;
         nova.photos = [];
         renderNovaPhotos();
-        ['nova-desc','nova-marca','nova-tam','nova-cor','nova-preco'].forEach(id =>
+        ['nova-desc','nova-marca','nova-tam','nova-cor','nova-preco','nova-dictado'].forEach(id =>
           document.getElementById(id).value = '');
         const obs = document.getElementById('nova-obs');
         obs.textContent = ''; obs.classList.remove('show');
         btn.innerHTML = 'Salvar no catálogo';
         updateNovaButtons();
+        clearDraft();
         showToast(`${codigo} cadastrada no catálogo ✓`, 3500);
       })
       .withFailureHandler(err => {
@@ -909,8 +968,21 @@
       .createPiece(payload);
   });
 
+  // TEMP — debug do bug "peça não salva na planilha". Remover depois.
+  function debugInfo() {
+    google.script.run
+      .withSuccessHandler(info => alert(JSON.stringify(info, null, 2)))
+      .withFailureHandler(err => alert('Erro: ' + (err.message || err)))
+      .debugInfoBackend();
+  }
+
   // ── Boot ────────────────────────────────────────────────────
-  showView('home');
+  if (restoreNovaDraft()) {
+    showToast('Rascunho recuperado — confira antes de salvar.', 3500);
+    showView('nova');
+  } else {
+    showView('home');
+  }
 </script>
 </body>
 </html>
