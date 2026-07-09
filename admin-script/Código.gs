@@ -329,14 +329,31 @@ function _ensureOrigemCadastroColumn_(sheet) {
   if (col > -1) return col;
 
   col = lastCol; // próxima coluna livre (0-indexado)
-  sheet.getRange(1, col + 1).setValue('Origem Cadastro');
-
   const { lastRow } = _lastDataRow_(sheet, headers.indexOf('Código'));
+  const totalRows = Math.max(lastRow, 1);
+
+  // Copia a formatação (borda/grade) da coluna vizinha antes de escrever — senão a coluna
+  // nova nasce sem nenhum estilo, mesmo com dado dentro.
+  sheet.getRange(1, lastCol, totalRows, 1)
+    .copyTo(sheet.getRange(1, col + 1, totalRows, 1), SpreadsheetApp.CopyPasteType.PASTE_FORMAT, false);
+
+  sheet.getRange(1, col + 1).setValue('Origem Cadastro');
   if (lastRow > 1) {
     const backfill = Array(lastRow - 1).fill(['Manual']);
     sheet.getRange(2, col + 1, backfill.length, 1).setValues(backfill);
   }
   return col;
+}
+
+// Se a linha nova ficou fora do alcance de uma faixa de banda (cores/bordas alternadas)
+// que terminava exatamente na linha anterior, estende a faixa pra incluir a linha nova.
+function _extendBandingIfNeeded_(sheet, newLastRow) {
+  sheet.getBandings().forEach(b => {
+    const r = b.getRange();
+    if (r.getRow() <= 2 && r.getLastRow() === newLastRow - 1) {
+      b.setRange(sheet.getRange(r.getRow(), r.getColumn(), newLastRow - r.getRow() + 1, r.getNumColumns()));
+    }
+  });
 }
 
 function createPiece(data) {
@@ -419,6 +436,7 @@ function createPiece(data) {
       estoque.getRange(estLastDataRow, 1, 1, estoque.getLastColumn())
         .copyTo(estoque.getRange(novaLinha, 1, 1, estoque.getLastColumn()), SpreadsheetApp.CopyPasteType.PASTE_FORMAT, false);
     }
+    _extendBandingIfNeeded_(estoque, novaLinha);
     if (repasseCol > -1)  estoque.getRange(novaLinha, repasseCol + 1).setNumberFormat('0%');
     if (comissaoCol > -1) estoque.getRange(novaLinha, comissaoCol + 1).setNumberFormat('0%');
 
@@ -459,6 +477,7 @@ function createPiece(data) {
         catalogo.getRange(catLastDataRow, 1, 1, catalogo.getLastColumn())
           .copyTo(catalogo.getRange(catNovaLinha, 1, 1, catalogo.getLastColumn()), SpreadsheetApp.CopyPasteType.PASTE_FORMAT, false);
       }
+      _extendBandingIfNeeded_(catalogo, catNovaLinha);
     }
 
     return codigo;
