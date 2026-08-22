@@ -3,28 +3,35 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Não Apego — bazar de desapegos</title>
+<title>Não Apego — bazar de desapegos exclusivos</title>
+<meta name="description" content="Peças únicas do closet de influenciadoras e modelos brasileiras, em drops de desconto progressivo. Estado impecável, curadoria da Lu Bittencourt.">
+<meta property="og:title" content="Não Apego — bazar de desapegos exclusivos">
+<meta property="og:description" content="Peças únicas do closet de influenciadoras e modelos brasileiras, em drops de desconto progressivo.">
+<meta property="og:image" content="https://naoapego.com.br/assets/og-image.png">
+<meta property="og:type" content="website">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400;1,9..144,500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Prata&family=Montserrat:wght@400;500;600;700;800&family=Cormorant+Garamond:ital,wght@1,300;1,400;1,500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-/* ============ Brand tokens ============ */
+/* ============ Brand tokens — identidade 2026 ============ */
 :root {
-  --bg: #F2F0EB;
-  --bg-2: #E8E4DB;
-  --ink: #121110;
-  --ink-2: #3A3632;
-  --mute: #8B8278;
-  --line: #D8D2C4;
-  --accent: #B14A2C;
-  --accent-2: #D9A441;
-  --card: #FFFFFF;
-  --f-display: 'Archivo', system-ui, sans-serif;
-  --f-serif: 'Fraunces', Georgia, serif;
-  --f-body: 'Archivo', system-ui, sans-serif;
+  --bg: #F6F2EC;
+  --bg-2: #EDE3D7;
+  --ink: #402924;
+  --ink-2: #2B1A17;
+  --mute: #6B4A42;
+  --line: #CBAE90;
+  --accent: #0A1A46;
+  --accent-2: #8FAFE6;
+  --card: #FCFAF6;
+  --f-display: 'Prata', Georgia, serif;
+  --f-serif: 'Cormorant Garamond', Georgia, serif;
+  --f-body: 'Montserrat', system-ui, sans-serif;
   --f-mono: 'JetBrains Mono', ui-monospace, monospace;
-  --display-tracking: -0.03em;
-  --display-weight: 800;
+  --display-tracking: -0.005em;
+  --display-weight: 400;
   --display-style: normal;
 }
 [data-palette="tropical"] {
@@ -35,9 +42,9 @@
   --bg: #0E0E0E; --bg-2: #171717; --ink: #F5F1E8; --ink-2: #C9BFB0;
   --mute: #8A8A8A; --line: #2A2A2A; --accent: #E85D3A; --accent-2: #F4C95D; --card: #1A1A1A;
 }
-[data-type="editorial"] { --f-display:'Archivo',system-ui,sans-serif; --display-weight:800; --display-tracking:-0.03em; --display-style:normal; }
-[data-type="classic"]   { --f-display:'Fraunces',Georgia,serif; --display-weight:500; --display-tracking:-0.02em; --display-style:normal; }
-[data-type="modern"]    { --f-display:'Archivo',system-ui,sans-serif; --display-weight:900; --display-tracking:-0.04em; --display-style:normal; }
+[data-type="editorial"] { --f-display:'Prata',Georgia,serif; --display-weight:400; --display-tracking:-0.005em; --display-style:normal; }
+[data-type="classic"]   { --f-display:'Cormorant Garamond',Georgia,serif; --display-weight:500; --display-tracking:-0.02em; --display-style:normal; }
+[data-type="modern"]    { --f-display:'Prata',Georgia,serif; --display-weight:400; --display-tracking:0; --display-style:normal; }
 
 /* ============ Reset ============ */
 *,*::before,*::after{box-sizing:border-box;}
@@ -72,8 +79,10 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
 .wa-pill{display:inline-flex;align-items:center;gap:8px;padding:8px 14px 8px 12px;background:var(--ink);color:var(--bg);border-radius:100px;font-size:12px;font-weight:500;transition:transform 0.2s;opacity:1!important;white-space:nowrap;}
 .wa-pill:hover{transform:translateY(-1px);}
 .wa-pill .wa-icon{width:14px;height:14px;flex-shrink:0;fill:currentColor;}
-.logo{font-family:var(--f-display);font-weight:var(--display-weight);font-style:var(--display-style);letter-spacing:var(--display-tracking);font-size:19px;text-transform:lowercase;line-height:1;display:inline-flex;align-items:baseline;gap:1px;}
-.logo .dot{width:5px;height:5px;border-radius:50%;background:var(--accent);display:inline-block;margin:0 6px 2px;align-self:center;}
+.logo{font-family:var(--f-display);font-weight:var(--display-weight);font-style:var(--display-style);letter-spacing:var(--display-tracking);font-size:19px;text-transform:lowercase;line-height:1;display:inline-flex;align-items:center;gap:8px;}
+.logo img{width:22px;height:auto;display:block;}
+.footer-logo-mark{display:flex;align-items:center;gap:14px;}
+.footer-logo-mark img{width:40px;height:auto;display:block;}
 
 /* ============ Hero ============ */
 .hero{padding:70px 0 80px;border-bottom:1px solid var(--line);}
@@ -364,7 +373,7 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
       <button data-route="about">manifesto</button>
     </nav>
     <a class="logo" href="#" onclick="go('home');return false;">
-      não<span class="dot"></span>apego
+      <img src="assets/logo-na.png" alt="Não Apego" />não apego
     </a>
     <div class="nav-right">
       <a href="https://www.instagram.com/naoapegobazar/" target="_blank" rel="noopener" class="nav-ig">@naoapegobazar</a>
@@ -484,7 +493,10 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
     <div class="wrap">
       <div class="footer-main">
         <div>
-          <div class="display footer-logo">não<br/><span class="it">apego</span></div>
+          <div class="footer-logo-mark">
+            <img src="assets/logo-na.png" alt="Não Apego" />
+            <div class="display footer-logo">não<br/><span class="it">apego</span></div>
+          </div>
           <p style="margin-top:20px;max-width:320px;font-size:13px;color:var(--mute);">
             bazar de desapegos exclusivos · são paulo · brasil
           </p>
@@ -1057,7 +1069,7 @@ function renderSplitImage() {
       <path d="M310 80 Q310 110 340 120 L340 360 L280 360 L280 120 Q310 110 310 80" fill="var(--mute)" opacity="0.75"/>
       <path d="M400 70 L395 85 L405 85 Z" fill="var(--ink)"/>
       <path d="M410 80 Q410 110 440 120 L440 390 L380 390 L380 120 Q410 110 410 80" fill="var(--accent-2)" opacity="0.8"/>
-      <text x="30" y="470" font-family="Fraunces,Georgia,serif" font-style="italic" font-size="20" fill="var(--ink)" opacity="0.7">closet das influenciadoras · direto pra você</text>
+      <text x="30" y="470" font-family="Cormorant Garamond,Georgia,serif" font-style="italic" font-size="22" fill="var(--ink)" opacity="0.7">closet das influenciadoras · direto pra você</text>
     </svg>`;
 }
 

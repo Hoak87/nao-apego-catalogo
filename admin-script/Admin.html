@@ -7,10 +7,10 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      /* ── tokens copiados do index.html (site público) ── */
-      --bg: #F2F0EB; --bg-2: #E8E4DB; --card: #fff; --line: #D8D2C4;
-      --ink: #121110; --ink-2: #3A3632; --mute: #8B8278;
-      --accent: #B14A2C; --accent-2: #D9A441;
+      /* ── tokens copiados do index.html (site público) — identidade 2026 ── */
+      --bg: #F6F2EC; --bg-2: #EDE3D7; --card: #FCFAF6; --line: #CBAE90;
+      --ink: #402924; --ink-2: #2B1A17; --mute: #6B4A42;
+      --accent: #0A1A46; --accent-2: #8FAFE6;
       /* estado semântico — não faz parte da paleta do site, é intencional */
       --success: #25d366;
     }
@@ -23,7 +23,8 @@
       padding: 14px 16px;
       position: sticky; top: 0; z-index: 20;
     }
-    .wordmark { font-size: 1.2rem; font-weight: 800; letter-spacing: -0.03em; text-transform: lowercase; display: flex; align-items: baseline; }
+    .wordmark { font-size: 1.2rem; font-weight: 800; letter-spacing: -0.03em; text-transform: lowercase; display: flex; align-items: center; gap: 8px; }
+    .wordmark img { width: 20px; height: auto; display: block; }
     .wordmark .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); display: inline-block; margin: 0 7px 2px; }
     .wordmark .suffix { font-weight: 400; color: var(--mute); font-size: .7em; letter-spacing: 0; margin-left: 2px; }
     .greeting { font-size: .85rem; color: var(--ink-2); margin-top: 4px; }
@@ -430,7 +431,7 @@
     const el = document.getElementById('app-header');
     if (name === 'home') {
       el.innerHTML = `
-        <div class="wordmark">não apego<span class="dot"></span><span class="suffix">gestão</span></div>
+        <div class="wordmark"><img src="https://naoapego.com.br/assets/logo-na.png" alt="" />não apego<span class="suffix">gestão</span></div>
         <div class="greeting">Oi, <b>Lu</b> — vamos organizar o dia?</div>`;
     } else {
       el.innerHTML = `
