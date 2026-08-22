@@ -25,6 +25,7 @@
   --line: #CBAE90;
   --accent: #0A1A46;
   --accent-2: #8FAFE6;
+  --mist: #C9D8F2;
   --card: #FCFAF6;
   --f-display: 'Prata', Georgia, serif;
   --f-serif: 'Cormorant Garamond', Georgia, serif;
@@ -45,6 +46,10 @@
 [data-type="editorial"] { --f-display:'Prata',Georgia,serif; --display-weight:400; --display-tracking:-0.005em; --display-style:normal; }
 [data-type="classic"]   { --f-display:'Cormorant Garamond',Georgia,serif; --display-weight:500; --display-tracking:-0.02em; --display-style:normal; }
 [data-type="modern"]    { --f-display:'Prata',Georgia,serif; --display-weight:400; --display-tracking:0; --display-style:normal; }
+[data-page="about"] {
+  --bg: #C9D8F2; --accent: #0A1A46;
+  background: var(--bg); color: var(--ink);
+}
 
 /* ============ Reset ============ */
 *,*::before,*::after{box-sizing:border-box;}
@@ -76,13 +81,13 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
 .nav-right{display:flex;justify-content:flex-end;gap:22px;font-size:13px;align-items:center;}
 .nav-right a{opacity:0.7;transition:opacity 0.2s;}
 .nav-right a:hover{opacity:1;}
-.wa-pill{display:inline-flex;align-items:center;gap:8px;padding:8px 14px 8px 12px;background:var(--ink);color:var(--bg);border-radius:100px;font-size:12px;font-weight:500;transition:transform 0.2s;opacity:1!important;white-space:nowrap;}
+.wa-pill{display:inline-flex;align-items:center;gap:8px;padding:8px 14px 8px 12px;background:var(--accent);color:var(--bg);border-radius:100px;font-size:12px;font-weight:500;transition:transform 0.2s;opacity:1!important;white-space:nowrap;}
 .wa-pill:hover{transform:translateY(-1px);}
 .wa-pill .wa-icon{width:14px;height:14px;flex-shrink:0;fill:currentColor;}
-.logo{font-family:var(--f-display);font-weight:var(--display-weight);font-style:var(--display-style);letter-spacing:var(--display-tracking);font-size:19px;text-transform:lowercase;line-height:1;display:inline-flex;align-items:center;gap:8px;}
-.logo img{width:22px;height:auto;display:block;}
-.footer-logo-mark{display:flex;align-items:center;gap:14px;}
-.footer-logo-mark img{width:40px;height:auto;display:block;}
+.logo{font-family:var(--f-display);font-weight:var(--display-weight);font-style:var(--display-style);letter-spacing:var(--display-tracking);font-size:20px;text-transform:lowercase;line-height:1;display:inline-flex;align-items:center;gap:9px;}
+.logo img{width:38px;height:auto;display:block;}
+.footer-logo-mark{display:flex;align-items:center;gap:18px;}
+.footer-logo-mark img{width:112px;height:auto;display:block;}
 
 /* ============ Hero ============ */
 .hero{padding:70px 0 80px;border-bottom:1px solid var(--line);}
@@ -90,8 +95,8 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
 .hero-title{font-size:clamp(64px,9vw,148px);}
 .hero-title .it{font-family:var(--f-serif);font-style:italic;font-weight:300;letter-spacing:-0.01em;}
 .hero-copy{font-size:17px;line-height:1.5;max-width:380px;margin-bottom:28px;color:var(--ink-2);}
-.hero-cta{display:inline-flex;align-items:center;gap:10px;padding:14px 22px;border:1px solid var(--ink);border-radius:100px;font-size:13px;font-weight:500;transition:all 0.2s;white-space:nowrap;}
-.hero-cta:hover{background:var(--ink);color:var(--bg);}
+.hero-cta{display:inline-flex;align-items:center;gap:10px;padding:14px 22px;border:1px solid var(--accent);background:var(--accent);color:var(--bg);border-radius:100px;font-size:13px;font-weight:500;transition:all 0.2s;white-space:nowrap;}
+.hero-cta:hover{opacity:0.85;transform:translateY(-1px);}
 .hero-cta .arrow{transition:transform 0.2s;}
 .hero-cta:hover .arrow{transform:translateX(3px);}
 .hero-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:56px;}
@@ -103,7 +108,7 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.4;transform:scale(0.85);}}
 
 /* ============ Marquee ============ */
-.marquee{padding:14px 0;border-bottom:1px solid var(--line);overflow:hidden;}
+.marquee{padding:14px 0;border-bottom:1px solid var(--line);overflow:hidden;background:var(--mist);}
 .marquee-track{display:flex;gap:40px;animation:marquee 60s linear infinite;white-space:nowrap;}
 .marquee span{font-family:var(--f-display);font-size:15px;font-weight:500;letter-spacing:-0.01em;display:inline-flex;align-items:center;gap:40px;}
 .marquee span::after{content:'✶';color:var(--accent);font-family:var(--f-serif);}
@@ -125,7 +130,7 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
 .product:hover .product-image svg{transform:scale(1.02);}
 .product-overlay{position:absolute;inset:0;background:color-mix(in srgb,var(--ink) 8%,transparent);opacity:0;transition:opacity 0.3s;display:flex;align-items:flex-end;padding:16px;}
 .product:hover .product-overlay{opacity:1;}
-.product-wa{background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:100px;font-size:12px;font-weight:500;display:inline-flex;align-items:center;gap:6px;}
+.product-wa{background:var(--accent);color:var(--bg);padding:10px 16px;border-radius:100px;font-size:12px;font-weight:500;display:inline-flex;align-items:center;gap:6px;}
 .product-info{padding:12px 14px 18px;display:flex;flex-direction:column;gap:3px;}
 .product-brand{font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--mute);font-weight:500;}
 .product-name{font-size:14px;font-weight:500;letter-spacing:-0.01em;display:flex;justify-content:space-between;gap:10px;align-items:baseline;}
@@ -134,25 +139,25 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
 .product-meta{font-size:11px;color:var(--mute);display:flex;gap:8px;flex-wrap:wrap;margin-top:2px;}
 .tag{position:absolute;top:12px;left:12px;padding:5px 9px;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;border-radius:100px;font-weight:500;}
 .tag.hot{background:var(--accent);color:#fff;}
-.tag.new{background:var(--ink);color:var(--bg);}
+.tag.new{background:var(--line);color:var(--ink);}
 
 /* ============ Drop system ============ */
 .lote-row{display:flex;align-items:center;justify-content:space-between;gap:6px;margin:6px 0 2px;}
 .lote-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:100px;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;font-weight:700;}
-.lote-badge.l1{background:color-mix(in srgb,var(--ink) 10%,transparent);color:var(--ink);}
-.lote-badge.l2{background:var(--accent-2);color:#1a1510;}
+.lote-badge.l1{background:var(--line);color:var(--ink);}
+.lote-badge.l2{background:var(--accent-2);color:var(--ink);}
 .lote-badge.l3{background:var(--accent);color:#fff;}
 .lote-days{font-size:10px;color:var(--mute);letter-spacing:0.02em;white-space:nowrap;}
 .lote-track{height:2px;background:var(--line);border-radius:1px;margin:4px 0 8px;overflow:hidden;}
 .lote-fill{height:100%;border-radius:1px;transition:width 0.3s;}
-.lote-fill.l1{background:var(--ink);}
+.lote-fill.l1{background:var(--line);}
 .lote-fill.l2{background:var(--accent-2);}
 .lote-fill.l3{background:var(--accent);}
 .notify-btn{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--mute);padding:0;cursor:pointer;background:none;border:0;letter-spacing:0.01em;font-family:inherit;transition:color 0.15s;margin-top:2px;}
 .notify-btn:hover{color:var(--ink);}
 .notify-bell{font-size:10px;}
 .product-actions{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;}
-.wa-card-btn{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;background:var(--ink);color:var(--bg);border-radius:100px;font-size:11px;font-weight:500;letter-spacing:0.01em;transition:opacity 0.2s;white-space:nowrap;}
+.wa-card-btn{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;background:var(--accent);color:var(--bg);border-radius:100px;font-size:11px;font-weight:500;letter-spacing:0.01em;transition:opacity 0.2s;white-space:nowrap;}
 .wa-card-btn:hover{opacity:0.82;}
 .wa-card-btn svg{width:11px;height:11px;fill:currentColor;flex-shrink:0;}
 
@@ -160,7 +165,7 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
 .split{display:grid;grid-template-columns:1fr 1fr;gap:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);}
 @media(max-width:860px){.split{grid-template-columns:1fr;}}
 .split>div{padding:72px 48px;}
-.split-image{background:var(--bg-2);display:flex;align-items:center;justify-content:center;}
+.split-image{background:var(--mist);display:flex;align-items:center;justify-content:center;}
 .split-image svg{width:100%;height:100%;max-height:500px;}
 .split-copy{display:flex;flex-direction:column;justify-content:center;gap:24px;}
 .quote{font-size:clamp(28px,3.5vw,44px);line-height:1.15;letter-spacing:-0.02em;font-weight:400;}
@@ -169,13 +174,13 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
 /* ============ Influencers ============ */
 .influencer-row{display:flex;gap:32px;flex-wrap:wrap;padding:40px 0;}
 .influ{display:flex;flex-direction:column;align-items:center;gap:10px;cursor:pointer;}
-.influ-img{width:92px;height:92px;border-radius:50%;background:var(--bg-2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-family:var(--f-display);font-weight:700;font-size:24px;color:var(--mute);letter-spacing:-0.02em;transition:border-color 0.2s;}
+.influ-img{width:92px;height:92px;border-radius:50%;background:var(--mist);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-family:var(--f-display);font-weight:700;font-size:24px;color:var(--ink);letter-spacing:-0.02em;transition:border-color 0.2s;}
 .influ:hover .influ-img{border-color:var(--ink);}
 .influ-name{font-size:12px;font-weight:500;letter-spacing:-0.005em;}
 .influ-count{font-size:10px;color:var(--mute);letter-spacing:0.06em;}
 
 /* ============ VIP Block ============ */
-.vip-block{background:var(--ink);color:var(--bg);padding:80px 48px;display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;}
+.vip-block{background:var(--accent);color:var(--bg);padding:80px 48px;display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;}
 @media(max-width:760px){.vip-block{grid-template-columns:1fr;padding:48px 24px;}}
 .vip-block h2{font-size:clamp(40px,5vw,72px);font-family:var(--f-display);font-weight:var(--display-weight);letter-spacing:var(--display-tracking);line-height:0.92;margin-bottom:0;}
 .vip-block .it{font-family:var(--f-serif);font-style:italic;font-weight:300;}
@@ -194,7 +199,7 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
 .vip-or{font-size:11px;opacity:0.5;text-align:center;margin:10px 0;}
 
 /* ============ Live banner on home ============ */
-.live-banner{background:var(--ink);color:var(--bg);padding:72px 48px;display:grid;grid-template-columns:1fr auto;gap:40px;align-items:end;}
+.live-banner{background:var(--accent);color:var(--bg);padding:72px 48px;display:grid;grid-template-columns:1fr auto;gap:40px;align-items:end;}
 [data-palette="tropical"] .live-banner{background:var(--accent);}
 .live-banner h2{font-size:clamp(40px,6vw,96px);font-family:var(--f-display);font-weight:var(--display-weight);letter-spacing:var(--display-tracking);line-height:0.9;}
 .live-banner .it{font-family:var(--f-serif);font-style:italic;font-weight:300;}
@@ -220,9 +225,9 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
 .shop-title{font-size:clamp(48px,6vw,96px);line-height:0.9;}
 .shop-title .it{font-family:var(--f-serif);font-style:italic;font-weight:300;}
 .shop-filters{display:flex;gap:8px;flex-wrap:wrap;padding:20px 0;}
-.filter-chip{padding:8px 14px;border:1px solid var(--line);border-radius:100px;font-size:12px;font-weight:500;transition:all 0.15s;}
+.filter-chip{padding:8px 14px;border:1px solid var(--line);background:color-mix(in srgb,var(--line) 16%,transparent);border-radius:100px;font-size:12px;font-weight:500;transition:all 0.15s;}
 .filter-chip:hover{border-color:var(--ink);}
-.filter-chip.is-on{background:var(--ink);color:var(--bg);border-color:var(--ink);}
+.filter-chip.is-on{background:var(--accent);color:var(--bg);border-color:var(--accent);}
 .shop-search{display:flex;align-items:center;gap:10px;padding:16px 0 4px;border-bottom:1px solid var(--line);margin-bottom:4px;}
 .shop-search input{flex:1;border:0;background:transparent;font:inherit;font-size:14px;color:var(--ink);outline:none;padding:4px 0;}
 .shop-search input::placeholder{color:var(--mute);}
@@ -258,8 +263,8 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
 .lote-viz{display:flex;flex-direction:column;gap:0;border:1px solid var(--line);border-radius:16px;overflow:hidden;margin:60px 0 0;}
 .lote-viz-row{display:grid;grid-template-columns:auto 1fr auto;gap:20px;align-items:center;padding:22px 28px;border-bottom:1px solid var(--line);}
 .lote-viz-row:last-child{border-bottom:0;}
-.lote-viz-row.active{background:color-mix(in srgb,var(--accent) 5%,transparent);}
-.lote-viz-num{font-family:var(--f-serif);font-style:italic;font-weight:300;font-size:36px;color:var(--mute);line-height:1;}
+.lote-viz-row.active{background:var(--mist);}
+.lote-viz-num{font-family:var(--f-serif);font-style:italic;font-weight:300;font-size:36px;color:var(--accent);line-height:1;}
 .lote-viz-info h4{font-size:15px;font-weight:600;letter-spacing:-0.01em;margin-bottom:3px;}
 .lote-viz-info p{font-size:13px;color:var(--mute);}
 .lote-viz-discount{font-family:var(--f-serif);font-style:italic;font-size:28px;font-weight:300;text-align:right;}
@@ -274,8 +279,6 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
 .no-reserva-side h4{font-size:17px;font-weight:600;letter-spacing:-0.015em;margin-bottom:8px;}
 .no-reserva-side p{font-size:14px;color:var(--ink-2);line-height:1.55;}
 .no-reserva-side .badge{display:inline-block;padding:4px 10px;border-radius:100px;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;font-weight:600;margin-bottom:12px;}
-.badge-green{background:color-mix(in srgb,#4CAF50 15%,transparent);color:#2a6b2a;}
-.badge-red{background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent);}
 
 /* ============ Lives page ============ */
 .live-card{display:grid;grid-template-columns:100px 1fr auto;gap:28px;padding:36px 0;border-bottom:1px solid var(--line);align-items:start;}
@@ -291,7 +294,7 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
 .live-card .host{font-size:13px;color:var(--mute);margin-bottom:8px;}
 .live-card .topic{font-size:14px;color:var(--ink-2);line-height:1.45;max-width:480px;}
 .live-cta-btn{display:inline-flex;align-items:center;gap:8px;padding:12px 20px;border:1px solid var(--ink);border-radius:100px;font-size:13px;font-weight:500;white-space:nowrap;transition:all 0.2s;align-self:flex-start;}
-.live-cta-btn:hover{background:var(--ink);color:var(--bg);}
+.live-cta-btn:hover{background:var(--accent);color:var(--bg);}
 .live-cta-btn.past{border-color:var(--line);color:var(--mute);}
 .live-cta-btn.past:hover{background:transparent;color:var(--mute);}
 
@@ -321,7 +324,7 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
 .modal-box p{font-size:14px;color:var(--ink-2);line-height:1.5;margin-bottom:24px;}
 .modal-input{width:100%;padding:14px 18px;border:1px solid var(--line);border-radius:100px;font:inherit;font-size:14px;background:var(--bg);color:var(--ink);outline:none;transition:border-color 0.2s;margin-bottom:10px;}
 .modal-input:focus{border-color:var(--ink);}
-.modal-submit{width:100%;padding:14px;background:var(--ink);color:var(--bg);border:0;border-radius:100px;font:inherit;font-size:14px;font-weight:600;cursor:pointer;transition:opacity 0.2s;}
+.modal-submit{width:100%;padding:14px;background:var(--accent);color:var(--bg);border:0;border-radius:100px;font:inherit;font-size:14px;font-weight:600;cursor:pointer;transition:opacity 0.2s;}
 .modal-submit:hover{opacity:0.85;}
 .modal-or{text-align:center;font-size:12px;color:var(--mute);margin:14px 0;}
 .modal-wa-btn{display:flex;align-items:center;justify-content:center;gap:10px;padding:13px;border:1px solid var(--line);border-radius:100px;font-size:13px;font-weight:500;cursor:pointer;transition:all 0.2s;background:none;color:var(--ink);width:100%;font-family:inherit;}
@@ -342,7 +345,7 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
 .tweaks-row{display:flex;gap:6px;flex-wrap:wrap;}
 .tw-opt{padding:7px 12px;border:1px solid var(--line);border-radius:100px;font-size:12px;font-weight:500;cursor:pointer;transition:all 0.15s;}
 .tw-opt:hover{border-color:var(--ink);}
-.tw-opt.is-on{background:var(--ink);color:var(--bg);border-color:var(--ink);}
+.tw-opt.is-on{background:var(--accent);color:var(--bg);border-color:var(--accent);}
 .tweaks-close{position:absolute;top:12px;right:12px;width:24px;height:24px;border-radius:50%;background:var(--bg-2);display:flex;align-items:center;justify-content:center;font-size:12px;border:0;cursor:pointer;}
 
 @media(max-width:800px){
@@ -533,7 +536,7 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
 
 <!-- ============ SHOP ============ -->
 <section class="page" data-page="shop">
-  <div class="shop-head">
+  <div class="shop-head" style="background:color-mix(in srgb,var(--line) 30%,var(--bg));">
     <div class="wrap">
       <div class="shop-head-top">
         <h1 class="display shop-title">o bazar<br/><span class="it">247 peças, agora</span></h1>
@@ -593,16 +596,16 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
         por enquanto.
       </h1>
       <div class="manifesto-body">
-        <aside class="manifesto-aside">
-          <div class="num">14</div>
-          <div class="cap">edições · 40+ influenciadoras · 3.800 peças circulando</div>
+        <aside class="manifesto-aside" style="background:var(--accent);border-radius:20px;padding:32px 28px;border-top:4px solid var(--line);">
+          <div class="num" style="color:var(--bg);">14</div>
+          <div class="cap" style="color:color-mix(in srgb,var(--bg) 78%,transparent);">edições · 40+ influenciadoras · 3.800 peças circulando</div>
         </aside>
         <div>
           <p class="lead">Não Apego nasceu de uma observação simples: as roupas mais bonitas do Brasil estão paradas em closets de quem já usou uma vez. Enquanto isso, tem gente procurando exatamente aquela peça.</p>
           <p>A gente acha isso um desperdício — de roupa, de história, de prazer. Então criamos um bazar de desapegos: influenciadoras e modelos confiam suas peças pra gente, a gente fotografa, descreve, precifica com honestidade, e bota pra circular.</p>
           <p>Tudo em estado impecável. Tudo com procedência. Tudo em edição limitada — quando acaba, acabou. Cada peça vem com o nome de quem usou antes, porque a história faz parte.</p>
           <p>A gente não acredita em fast fashion. Acredita em roupa boa, que circula, que muda de dona, que continua vivendo. Acredita que a beleza não precisa de novidade — precisa de movimento.</p>
-          <p class="lead" style="color:var(--accent);">Compre menos. Desapegue mais. Viva com o que for bom.</p>
+          <p class="lead" style="background:var(--accent);color:var(--bg);padding:30px 32px;border-radius:20px;border-top:4px solid var(--line);">Compre menos. Desapegue mais. Viva com o que for bom.</p>
           <p style="font-family:var(--f-serif);font-style:italic;font-size:16px;color:var(--mute);margin-top:40px;">— Lu Bittencourt, fundadora</p>
         </div>
       </div>
@@ -612,7 +615,7 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
 
 <!-- ============ COMO FUNCIONA ============ -->
 <section class="page" data-page="how">
-  <div class="shop-head">
+  <div class="shop-head" style="background:var(--mist);">
     <div class="wrap">
       <div class="shop-head-top">
         <h1 class="display shop-title">como<br/><span class="it">funciona</span></h1>
@@ -668,12 +671,12 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
       </div>
       <div class="lote-viz">
         <div class="lote-viz-row">
-          <div class="lote-viz-num">01</div>
+          <div class="lote-viz-num" style="color:var(--line);">01</div>
           <div class="lote-viz-info">
             <h4>Drop 01 — novo no catálogo</h4>
             <p>dias 1–30 · peça recém-chegada · preço de entrada já com desconto do varejo</p>
           </div>
-          <div class="lote-viz-discount">preço<br/>de entrada</div>
+          <div class="lote-viz-discount" style="color:var(--line);">preço<br/>de entrada</div>
         </div>
         <div class="lote-viz-row active">
           <div class="lote-viz-num">02</div>
@@ -702,23 +705,23 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
       </div>
 
       <!-- No reserva / pagamento -->
-      <div class="no-reserva" style="margin-top:40px;">
-        <div class="no-reserva-side">
-          <span class="badge badge-green">sem reserva</span>
-          <h4>quem pagou, garantiu</h4>
-          <p>Não temos fila, não temos reserva. A peça fica disponível para qualquer pessoa até alguém pagar. É justo, transparente, e a dinâmica que o bazar precisa para funcionar bem pra todo mundo.</p>
+      <div class="no-reserva" style="margin-top:40px;background:var(--accent);border:1px solid var(--accent);border-top:4px solid var(--line);">
+        <div class="no-reserva-side" style="border-right:1px solid rgba(255,255,255,.18);">
+          <span class="badge" style="background:var(--accent-2);color:var(--ink);">sem reserva</span>
+          <h4 style="color:var(--bg);">quem pagou, garantiu</h4>
+          <p style="color:color-mix(in srgb,var(--bg) 80%,transparent);">Não temos fila, não temos reserva. A peça fica disponível para qualquer pessoa até alguém pagar. É justo, transparente, e a dinâmica que o bazar precisa para funcionar bem pra todo mundo.</p>
         </div>
         <div class="no-reserva-side">
-          <span class="badge badge-red">se não quiser perder</span>
-          <h4>ative a notificação de lote</h4>
-          <p>Cada peça tem um botão de notificação. A gente avisa você no WhatsApp quando ela mudar de lote — assim você decide se a hora chegou, sem precisar ficar monitorando.</p>
+          <span class="badge" style="background:rgba(255,255,255,.16);color:var(--bg);">se não quiser perder</span>
+          <h4 style="color:var(--bg);">ative a notificação de lote</h4>
+          <p style="color:color-mix(in srgb,var(--bg) 80%,transparent);">Cada peça tem um botão de notificação. A gente avisa você no WhatsApp quando ela mudar de lote — assim você decide se a hora chegou, sem precisar ficar monitorando.</p>
         </div>
       </div>
     </div>
   </section>
 
   <!-- For sellers -->
-  <section class="section" style="background:var(--bg-2);padding:70px 0 80px;">
+  <section class="section" style="background:var(--mist);padding:70px 0 80px;">
     <div class="wrap">
       <div class="eyebrow" style="margin-bottom:32px;">para quem quer desapegar</div>
       <div class="how-5" style="background:var(--bg);border-radius:16px;border:1px solid var(--line);overflow:hidden;">
@@ -754,22 +757,22 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
       <!-- Open / Closed Closet -->
       <div style="margin-top:48px;">
         <div class="eyebrow" style="margin-bottom:20px;">dois modos de participar</div>
-        <div class="no-reserva" style="margin-top:0;">
-          <div class="no-reserva-side">
-            <span class="badge badge-green">open closet</span>
-            <h4>seu nome nas peças</h4>
-            <p>Suas peças aparecem com o seu perfil no catálogo. As compradoras sabem de quem vieram — isso valoriza a peça e cria uma conexão real com quem acompanha você.</p>
+        <div class="no-reserva" style="margin-top:0;background:var(--accent);border:1px solid var(--accent);border-top:4px solid var(--line);">
+          <div class="no-reserva-side" style="border-right:1px solid rgba(255,255,255,.18);">
+            <span class="badge" style="background:var(--accent-2);color:var(--ink);">open closet</span>
+            <h4 style="color:var(--bg);">seu nome nas peças</h4>
+            <p style="color:color-mix(in srgb,var(--bg) 80%,transparent);">Suas peças aparecem com o seu perfil no catálogo. As compradoras sabem de quem vieram — isso valoriza a peça e cria uma conexão real com quem acompanha você.</p>
           </div>
           <div class="no-reserva-side">
-            <span class="badge" style="background:color-mix(in srgb,var(--ink) 8%,transparent);color:var(--ink-2);">closed closet</span>
-            <h4>participação anônima</h4>
-            <p>Suas peças circulam sem identificação. Nem marcas, nem público ficam sabendo — só você, a Lu e quem comprou. Total discrição, sem abrir mão de ganhar com o desapego.</p>
+            <span class="badge" style="background:rgba(255,255,255,.16);color:var(--bg);">closed closet</span>
+            <h4 style="color:var(--bg);">participação anônima</h4>
+            <p style="color:color-mix(in srgb,var(--bg) 80%,transparent);">Suas peças circulam sem identificação. Nem marcas, nem público ficam sabendo — só você, a Lu e quem comprou. Total discrição, sem abrir mão de ganhar com o desapego.</p>
           </div>
         </div>
       </div>
 
       <div style="margin-top:32px;text-align:center;">
-        <a href="#" class="hero-cta desapegar-cta" style="display:inline-flex;">
+        <a href="#" class="hero-cta desapegar-cta" style="display:inline-flex;background:var(--accent);color:var(--bg);border-color:var(--accent);">
           <span>quero desapegar →</span>
         </a>
       </div>
@@ -908,10 +911,10 @@ async function loadData() {
 }
 
 const PALETTES = [
-  ['#C8AAA0','#8E6854'],['#2A2A28','#4A4A45'],['#3E3A33','#6B6154'],
-  ['#E8C5B5','#B8786A'],['#EFE8D8','#C8BFA8'],['#A4523C','#763520'],
-  ['#1C1917','#3E332E'],['#1A1513','#3B2D24'],['#D9A441','#8B6418'],
-  ['#718CA1','#3E5368'],['#C23B22','#6B1E0F'],['#F0E0C0','#BFA478'],
+  ['#DCC7B1','#6B4A42'],['#8FAFE6','#0A1A46'],['#402924','#2B1A17'],
+  ['#EDE3D7','#CBAE90'],['#C9D8F2','#6F8FC6'],['#CBAE90','#402924'],
+  ['#6F8FC6','#0A1A46'],['#F6F2EC','#DCC7B1'],['#0A1A46','#2B1A17'],
+  ['#8FAFE6','#402924'],['#C9D8F2','#111111'],['#CBAE90','#6B4A42'],
 ];
 
 function updateCounts() {
@@ -1007,7 +1010,7 @@ function productTile(p) {
           <span>${p.size}</span>
           <span>·</span>
           ${p.infl === 'anônimo'
-            ? `<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;padding:2px 7px;border-radius:100px;background:color-mix(in srgb,var(--ink) 8%,transparent);letter-spacing:0.08em;text-transform:uppercase;font-weight:600;">closed closet</span>`
+            ? `<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;padding:2px 7px;border-radius:100px;background:color-mix(in srgb,var(--line) 45%,transparent);color:var(--ink);letter-spacing:0.08em;text-transform:uppercase;font-weight:600;">closed closet</span>`
             : `<span>desapego de ${p.infl}</span>`
           }
         </div>
@@ -1043,9 +1046,9 @@ function renderInfluencers() {
   const top = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,8)
     .map(([name,n]) => ({name, count:n+(n===1?' peça':' peças'), letters:name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2)}));
   if (!top.length) return;
-  document.getElementById('influencers').innerHTML = top.map(i=>`
+  document.getElementById('influencers').innerHTML = top.map((i,idx)=>`
     <div class="influ">
-      <div class="influ-img">${i.letters}</div>
+      <div class="influ-img" style="background:${idx%2? 'var(--line)':'var(--mist)'};">${i.letters}</div>
       <span class="influ-name">${i.name}</span>
       <span class="influ-count">${i.count}</span>
     </div>`).join('');
@@ -1056,7 +1059,7 @@ function renderSplitImage() {
   document.getElementById('split-img').innerHTML = `
     <svg viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
       <defs><linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stop-color="var(--bg-2)"/>
+        <stop offset="0" stop-color="var(--mist)"/>
         <stop offset="1" stop-color="var(--line)"/>
       </linearGradient></defs>
       <rect width="500" height="500" fill="url(#g1)"/>
