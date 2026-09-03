@@ -78,6 +78,53 @@ function doGet(e) {
     }
 
     _limparTentativasLogin_();
+
+    // Ação HTTP simples pra registrar venda via curl (ex: Henrique manda os dados da venda
+    // no chat e o Claude chama essa URL) — reaproveita a mesma senha do admin acima,
+    // sem criar um mecanismo de autenticação novo.
+    if (e && e.parameter && e.parameter.action === 'registrarVenda') {
+      return _handleRegistrarVendaAction_(e.parameter);
+    }
+    if (e && e.parameter && e.parameter.action === 'vendaDireta') {
+      return _handleVendaDiretaAction_(e.parameter);
+    }
+    if (e && e.parameter && e.parameter.action === 'listClosets') {
+      return _handleListClosetsAction_();
+    }
+    if (e && e.parameter && e.parameter.action === 'listHeaders') {
+      return _handleListHeadersAction_();
+    }
+    if (e && e.parameter && e.parameter.action === 'sampleVendidas') {
+      return _handleSampleVendidasAction_(e.parameter);
+    }
+    if (e && e.parameter && e.parameter.action === 'checkFormulas') {
+      return _handleCheckFormulasAction_();
+    }
+    if (e && e.parameter && e.parameter.action === 'repassesPendentes') {
+      return _handleRepassesPendentesAction_();
+    }
+    if (e && e.parameter && e.parameter.action === 'deleteByCodigo') {
+      return _handleDeleteByCodigoAction_(e.parameter);
+    }
+    if (e && e.parameter && e.parameter.action === 'renameCloset') {
+      return _handleRenameClosetAction_(e.parameter);
+    }
+    if (e && e.parameter && e.parameter.action === 'updateFields') {
+      return _handleUpdateFieldsAction_(e.parameter);
+    }
+    if (e && e.parameter && e.parameter.action === 'marcarRepassePago') {
+      return _handleMarcarRepassePagoAction_(e.parameter);
+    }
+    if (e && e.parameter && e.parameter.action === 'listByCloset') {
+      return _handleListByClosetAction_(e.parameter);
+    }
+    if (e && e.parameter && e.parameter.action === 'marcarExistenteVendida') {
+      return _handleMarcarExistenteVendidaAction_(e.parameter);
+    }
+    if (e && e.parameter && e.parameter.action === 'findAllByCodigo') {
+      return _handleFindAllByCodigoAction_(e.parameter);
+    }
+
     return HtmlService
       .createHtmlOutputFromFile('Admin')
       .setTitle('não apego — gestão')
@@ -611,6 +658,760 @@ function createPiece(data) {
     return codigo;
   } finally {
     lock.releaseLock();
+  }
+}
+
+// ─── REGISTRO DE VENDA ─────────────────────────────────────────────────────
+// Garante que uma coluna existe no ESTOQUE, criando no final sem mexer na posição
+// das existentes (mesmo padrão de _ensureOrigemCadastroColumn_, mas sem backfill —
+// "Data Venda"/"Preço Venda" ficam vazias pro histórico, só passam a existir daqui pra frente).
+function _ensureColumn_(sheet, name) {
+  const lastCol = sheet.getLastColumn();
+  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(h => String(h).trim());
+  let col = headers.indexOf(name);
+  if (col > -1) return col;
+
+  col = lastCol;
+  // A grade da planilha pode ter exatamente o número de colunas já usadas — sem isso, o
+  // copyTo abaixo falha com "coordenadas fora das dimensões da página" ao mirar 1 coluna
+  // além do fim real da grade.
+  if (sheet.getMaxColumns() < col + 1) sheet.insertColumnAfter(lastCol);
+
+  const { lastRow } = _lastDataRow_(sheet, headers.indexOf('Código'));
+  const totalRows = Math.max(lastRow, 1);
+
+  // Formatação é só cosmético — um filtro ativo na planilha pode bloquear o copyTo
+  // ("intervalo com uma linha filtrada"), mas isso não pode impedir a coluna de existir.
+  try {
+    sheet.getRange(1, lastCol, totalRows, 1)
+      .copyTo(sheet.getRange(1, col + 1, totalRows, 1), SpreadsheetApp.CopyPasteType.PASTE_FORMAT, false);
+  } catch (fmtErr) { /* segue sem a formatação */ }
+  sheet.getRange(1, col + 1).setValue(name);
+  return col;
+}
+
+// Confirma a venda de uma peça: marca Status=Pago, grava Compradora/Data Venda/Preço Venda
+// no ESTOQUE, recalcula Valor Repasse/Valor Comissão pelo preço real de venda (que pode ser
+// diferente do Preço Total original por causa dos drops) e remove a peça do CATALOGO — assim
+// ela some do site na próxima leitura, sem precisar rodar a sincronização manual.
+function registrarVenda(row, compradora, precoVenda) {
+  compradora = String(compradora || '').trim();
+  if (!compradora) throw new Error('Nome da compradora é obrigatório.');
+  const preco = parseFloat(String(precoVenda).replace(',', '.'));
+  if (isNaN(preco) || preco <= 0) throw new Error('Preço de venda inválido.');
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const ss      = SpreadsheetApp.getActiveSpreadsheet();
+    const estoque = ss.getSheetByName(SHEET_NAME);
+
+    const dataVendaCol     = _ensureColumn_(estoque, 'Data Venda');
+    const precoVendaCol    = _ensureColumn_(estoque, 'Preço Venda');
+    const mesCol           = _ensureColumn_(estoque, 'Mês');
+    const anoCol           = _ensureColumn_(estoque, 'Ano');
+    const statusRepasseCol = _ensureColumn_(estoque, 'Status Repasse');
+
+    const headers = estoque.getRange(1, 1, 1, estoque.getLastColumn()).getValues()[0].map(h => String(h).trim());
+    const colOf = name => headers.indexOf(name);
+    const idCol            = colOf('Código');
+    const statusCol        = colOf('Status');
+    const compradoraCol    = colOf('Compradora');
+    const repasseCol       = colOf('Repasse');
+    const comissaoCol      = colOf('Comissão');
+    const valorRepasseCol  = colOf('Valor Repasse');
+    const valorComissaoCol = colOf('Valor Comissão');
+
+    if (row < 2 || row > estoque.getLastRow()) throw new Error('Linha inválida — peça não encontrada.');
+    const rowValues = estoque.getRange(row, 1, 1, estoque.getLastColumn()).getValues()[0];
+    const codigo = String(rowValues[idCol] || '').trim();
+    if (!codigo) throw new Error('Linha inválida — peça não encontrada.');
+    if (String(rowValues[statusCol] || '').trim() === 'Pago') {
+      throw new Error('Essa peça já está marcada como vendida.');
+    }
+
+    const agora = new Date();
+    estoque.getRange(row, statusCol + 1).setValue('Pago');
+    if (compradoraCol > -1) estoque.getRange(row, compradoraCol + 1).setValue(compradora);
+    estoque.getRange(row, dataVendaCol + 1).setValue(agora);
+    estoque.getRange(row, precoVendaCol + 1).setValue(preco);
+    // Mês/Ano refletem a Data Venda (confirmado batendo com vendas já existentes); repasse
+    // pro closet começa pendente — mesma convenção de toda venda já registrada.
+    estoque.getRange(row, mesCol + 1).setValue(MESES_PT[agora.getMonth()]);
+    estoque.getRange(row, anoCol + 1).setValue(agora.getFullYear());
+    estoque.getRange(row, statusRepasseCol + 1).setValue('Pendente');
+
+    // Sobrescreve com valor estático (em vez de manter a fórmula) porque o preço de venda
+    // pode ter mudado por causa de um drop — o valor pago precisa refletir a venda real.
+    if (repasseCol > -1 && valorRepasseCol > -1) {
+      estoque.getRange(row, valorRepasseCol + 1).setValue(preco * (Number(rowValues[repasseCol]) || 0));
+    }
+    if (comissaoCol > -1 && valorComissaoCol > -1) {
+      estoque.getRange(row, valorComissaoCol + 1).setValue(preco * (Number(rowValues[comissaoCol]) || 0));
+    }
+
+    // Remove do CATALOGO — a peça some do site na próxima leitura do CSV.
+    const catalogo = ss.getSheetByName('CATALOGO');
+    if (catalogo) {
+      const catHead    = catalogo.getRange(1, 1, 1, catalogo.getLastColumn()).getValues()[0].map(h => String(h).trim());
+      const catIdCol   = catHead.indexOf('Código');
+      const catLastRow = catalogo.getLastRow();
+      if (catIdCol > -1 && catLastRow > 1) {
+        const catIds = catalogo.getRange(2, catIdCol + 1, catLastRow - 1, 1).getValues().flat().map(String);
+        const idx = catIds.indexOf(codigo);
+        if (idx > -1) catalogo.deleteRow(idx + 2);
+      }
+    }
+
+    return { codigo: codigo, compradora: compradora, precoVenda: preco };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// Acha a peça pelo Código e chama registrarVenda — usada pela ação HTTP acima.
+function _handleRegistrarVendaAction_(params) {
+  try {
+    const codigo = String(params.codigo || '').trim();
+    if (!codigo) throw new Error('Parâmetro "codigo" é obrigatório.');
+
+    const sheet   = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(h => String(h).trim());
+    const idCol   = headers.indexOf('Código');
+    const lastRow = sheet.getLastRow();
+    if (idCol === -1 || lastRow < 2) throw new Error('Coluna Código não encontrada.');
+
+    const ids = sheet.getRange(2, idCol + 1, lastRow - 1, 1).getValues().flat().map(v => String(v).trim());
+    const idx = ids.indexOf(codigo);
+    if (idx === -1) throw new Error('Código não encontrado no ESTOQUE: ' + codigo);
+
+    const result = registrarVenda(idx + 2, params.compradora, params.preco);
+    return ContentService.createTextOutput(JSON.stringify({ ok: true, result: result }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Registra uma peça que foi vendida sem nunca ter sido cadastrada no catálogo (ex: venda
+// combinada direto por fora). Gera o código do mesmo jeito do cadastro normal (prefixo do
+// closet + AAMM + sequência), grava a linha já como Status=Pago — sem foto e sem escrever
+// no CATALOGO, porque a peça nunca chegou a ficar disponível no site.
+const MESES_PT = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+
+// data: {closet, marca, descritivo, tamanho, cor, preco, compradora, dataVenda, formaPagamento}
+// dataVenda: string "dd/mm/aaaa" (data real da venda); se omitida, usa agora.
+function registrarVendaDireta(data) {
+  if (!data.closet) throw new Error('Closet é obrigatório.');
+  if (!data.descritivo) throw new Error('Descritivo é obrigatório.');
+  const compradora = String(data.compradora || '').trim();
+  if (!compradora) throw new Error('Compradora é obrigatória.');
+  const preco = parseFloat(String(data.preco).replace(',', '.'));
+  if (isNaN(preco) || preco <= 0) throw new Error('Preço inválido.');
+
+  let dataVenda = new Date();
+  if (data.dataVenda) {
+    const partes = String(data.dataVenda).trim().split('/');
+    if (partes.length !== 3) throw new Error('dataVenda deve estar no formato dd/mm/aaaa.');
+    dataVenda = new Date(Number(partes[2]), Number(partes[1]) - 1, Number(partes[0]));
+    if (isNaN(dataVenda.getTime())) throw new Error('dataVenda inválida: ' + data.dataVenda);
+  }
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const ss      = SpreadsheetApp.getActiveSpreadsheet();
+    const estoque = ss.getSheetByName(SHEET_NAME);
+    _ensureOrigemCadastroColumn_(estoque);
+    const dataVendaCol   = _ensureColumn_(estoque, 'Data Venda');
+    const precoVendaCol  = _ensureColumn_(estoque, 'Preço Venda');
+    const pagamentoCol   = _ensureColumn_(estoque, 'Forma de Pagamento');
+    const headers = estoque.getRange(1, 1, 1, estoque.getLastColumn()).getValues()[0].map(h => String(h).trim());
+    const colOf = name => headers.indexOf(name);
+
+    const { lastRow: estLastDataRow, codigoValues: codes } = _lastDataRow_(estoque, colOf('Código'));
+
+    // ── Código: mesmo esquema do cadastro normal (createPiece) — pelo mês do REGISTRO (agora),
+    // não da venda real. Confirmado batendo com os códigos já existentes na planilha (ex:
+    // AC2605001/LB2605002 vendidos em abril mas com prefixo "2605" = registrados em maio). ──
+    const yymm = Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), 'yyMM');
+    const prefix = _closetPrefix(data.closet) + yymm;
+    let seq = 0;
+    codes.forEach(c => {
+      if (c.indexOf(prefix) === 0) {
+        const n = parseInt(c.substring(prefix.length), 10);
+        if (!isNaN(n) && n > seq) seq = n;
+      }
+    });
+    const codigo = prefix + ('00' + (seq + 1)).slice(-3);
+
+    // ── Repasse/Comissão: herda a mesma % já usada por esse closet; padrão 60/40 se for closet novo ──
+    const repasseCol  = colOf('Repasse');
+    const comissaoCol = colOf('Comissão');
+    const closetCol   = colOf('Closet');
+    let split = { repasse: 0.6, comissao: 0.4 };
+    if (repasseCol > -1 && comissaoCol > -1 && closetCol > -1 && estLastDataRow > 1) {
+      const rows = estoque.getRange(2, 1, estLastDataRow - 1, estoque.getLastColumn()).getValues();
+      for (let i = rows.length - 1; i >= 0; i--) {
+        if (String(rows[i][closetCol]).trim() === data.closet) {
+          split = { repasse: rows[i][repasseCol], comissao: rows[i][comissaoCol] };
+          break;
+        }
+      }
+    }
+
+    const estValues = {
+      'Código': codigo,
+      'Marca': data.marca || '',
+      'Descritivo Peça': data.descritivo,
+      'Tamanho': data.tamanho || '',
+      'Cor': data.cor || '',
+      'Status': 'Pago',
+      'Preço Total': preco,
+      'Data Entrada': new Date(), // data do registro — bate com a convenção já usada (ex: AC2605001 registrado 09/05 mas vendido 30/04)
+      'Closet': data.closet,
+      'Foto': '',
+      'Compradora': compradora,
+      'Repasse': split.repasse,
+      'Comissão': split.comissao,
+      'Origem Cadastro': 'Automático',
+      'Data Venda': dataVenda,
+      'Preço Venda': preco,
+      'Forma de Pagamento': data.formaPagamento || '',
+      // Mês/Ano refletem a Data Venda, não a data de registro — confirmado batendo com
+      // linhas já existentes (ex: AC2605001: Data Entrada maio, Data Venda abril, Mês="Abril").
+      'Mês': MESES_PT[dataVenda.getMonth()],
+      'Ano': dataVenda.getFullYear(),
+      // Repasse pro closet começa pendente — mesma convenção de toda venda já registrada.
+      'Status Repasse': 'Pendente',
+      'Data Repasse': '',
+    };
+    const estRow = headers.map(h => estValues[h] !== undefined ? estValues[h] : '');
+    const novaLinha = estLastDataRow + 1;
+    estoque.getRange(novaLinha, 1, 1, estRow.length).setValues([estRow]);
+    // Formatação/banding são só cosmético — não podem derrubar o registro da venda (ex: um
+    // filtro ativo na planilha bloqueia copyTo com "intervalo com uma linha filtrada").
+    try {
+      if (estLastDataRow > 1) {
+        estoque.getRange(estLastDataRow, 1, 1, estoque.getLastColumn())
+          .copyTo(estoque.getRange(novaLinha, 1, 1, estoque.getLastColumn()), SpreadsheetApp.CopyPasteType.PASTE_FORMAT, false);
+      }
+      _extendBandingIfNeeded_(estoque, novaLinha);
+      if (repasseCol > -1)  estoque.getRange(novaLinha, repasseCol + 1).setNumberFormat('0%');
+      if (comissaoCol > -1) estoque.getRange(novaLinha, comissaoCol + 1).setNumberFormat('0%');
+    } catch (fmtErr) { /* cosmético — segue mesmo se falhar */ }
+
+    const valorRepasseCol  = colOf('Valor Repasse');
+    const valorComissaoCol = colOf('Valor Comissão');
+    if (valorRepasseCol > -1)  estoque.getRange(novaLinha, valorRepasseCol + 1).setValue(preco * split.repasse);
+    if (valorComissaoCol > -1) estoque.getRange(novaLinha, valorComissaoCol + 1).setValue(preco * split.comissao);
+
+    return { codigo: codigo, compradora: compradora, preco: preco };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// Lê os parâmetros da querystring e chama registrarVendaDireta — usada pela ação HTTP acima.
+function _handleVendaDiretaAction_(params) {
+  try {
+    const result = registrarVendaDireta({
+      closet:         params.closet,
+      marca:          params.marca,
+      descritivo:     params.descritivo,
+      tamanho:        params.tamanho,
+      cor:            params.cor,
+      preco:          params.preco,
+      compradora:     params.compradora,
+      dataVenda:      params.dataVenda,
+      formaPagamento: params.formaPagamento,
+    });
+    return ContentService.createTextOutput(JSON.stringify({ ok: true, result: result }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Lista os closets já usados no ESTOQUE com o % de Repasse/Comissão mais recente de cada um —
+// só leitura, usada pra conferir o nome exato antes de registrar vendas via chat/curl (a busca
+// de herança de split em createPiece/registrarVendaDireta é por string exata).
+function _handleListClosetsAction_() {
+  try {
+    const sheet   = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) {
+      return ContentService.createTextOutput(JSON.stringify({ ok: true, closets: [] }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(h => String(h).trim());
+    const closetCol   = headers.indexOf('Closet');
+    const repasseCol  = headers.indexOf('Repasse');
+    const comissaoCol = headers.indexOf('Comissão');
+    const rows = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
+
+    const byCloset = {};
+    rows.forEach(r => {
+      const c = String(r[closetCol] || '').trim();
+      if (!c) return;
+      byCloset[c] = { repasse: r[repasseCol], comissao: r[comissaoCol] }; // última linha vence
+    });
+
+    const closets = Object.keys(byCloset).sort().map(c => ({
+      closet: c, repasse: byCloset[c].repasse, comissao: byCloset[c].comissao,
+    }));
+    return ContentService.createTextOutput(JSON.stringify({ ok: true, closets: closets }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Lista os cabeçalhos do ESTOQUE (e do CATALOGO) — só leitura, usada pra conferir a existência
+// de colunas antes de decidir o que registrar via chat/curl.
+function _handleListHeadersAction_() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const out = {};
+    ['ESTOQUE', 'CATALOGO'].forEach(name => {
+      const sheet = ss.getSheetByName(name);
+      out[name] = sheet ? sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(h => String(h).trim()) : null;
+    });
+    return ContentService.createTextOutput(JSON.stringify({ ok: true, headers: out }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Lê as últimas N linhas com Status="Pago" do ESTOQUE (todas as colunas) — só leitura,
+// usada pra conferir como colunas como "Status Repasse"/"Data Repasse" costumam ser
+// preenchidas antes de registrar vendas novas de forma consistente.
+function _handleSampleVendidasAction_(params) {
+  try {
+    const limit = Math.max(1, Math.min(5000, parseInt(params.limit, 10) || 10));
+    const sheet   = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) {
+      return ContentService.createTextOutput(JSON.stringify({ ok: true, headers: [], rows: [] }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(h => String(h).trim());
+    const statusCol = headers.indexOf('Status');
+    const data = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
+
+    const pagas = [];
+    for (let i = data.length - 1; i >= 0 && pagas.length < limit; i--) {
+      if (String(data[i][statusCol] || '').trim() === 'Pago') {
+        pagas.push(data[i].map(v => (v instanceof Date) ? v.toISOString() : v));
+      }
+    }
+    return ContentService.createTextOutput(JSON.stringify({ ok: true, headers: headers, rows: pagas }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Checa se "Mês"/"Ano" (e outras colunas relevantes) são fórmulas na última linha real do
+// ESTOQUE — só leitura, usada antes de decidir se precisam ser copiadas/calculadas ao criar
+// linhas novas via vendaDireta/registrarVenda.
+function _handleCheckFormulasAction_() {
+  try {
+    const sheet   = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(h => String(h).trim());
+    const { lastRow } = _lastDataRow_(sheet, headers.indexOf('Código'));
+    const check = ['Mês', 'Ano', 'Status Repasse', 'Data Repasse'];
+    const out = {};
+    check.forEach(name => {
+      const col = headers.indexOf(name);
+      if (col === -1) { out[name] = 'coluna não encontrada'; return; }
+      const cell = sheet.getRange(lastRow, col + 1);
+      out[name] = { formula: cell.getFormula(), value: cell.getValue() };
+    });
+    return ContentService.createTextOutput(JSON.stringify({ ok: true, lastRow: lastRow, check: out }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Fecha o mês: soma o Valor Repasse por closet de toda peça vendida (Status=Pago) cujo
+// repasse ainda não foi pago (Status Repasse != "Pago", inclui "Pendente" e em branco) —
+// só leitura, não muda nada na planilha.
+function _handleRepassesPendentesAction_() {
+  try {
+    const sheet   = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) {
+      return ContentService.createTextOutput(JSON.stringify({ ok: true, closets: [] }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(h => String(h).trim());
+    const colOf = name => headers.indexOf(name);
+    const statusCol        = colOf('Status');
+    const statusRepasseCol = colOf('Status Repasse');
+    const closetCol        = colOf('Closet');
+    const valorRepasseCol  = colOf('Valor Repasse');
+    const codigoCol        = colOf('Código');
+    const compradoraCol    = colOf('Compradora');
+    const descCol          = colOf('Descritivo Peça');
+    const data = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
+
+    const byCloset = {};
+    data.forEach(row => {
+      const status = String(row[statusCol] || '').trim();
+      const statusRepasse = String(row[statusRepasseCol] || '').trim();
+      if (status !== 'Pago' || statusRepasse === 'Pago') return;
+
+      const closet = String(row[closetCol] || '').trim() || '(sem closet)';
+      const valor  = Number(row[valorRepasseCol]) || 0;
+      if (!byCloset[closet]) byCloset[closet] = { total: 0, itens: [] };
+      byCloset[closet].total += valor;
+      byCloset[closet].itens.push({
+        codigo: row[codigoCol], descritivo: row[descCol], compradora: row[compradoraCol],
+        valorRepasse: valor, statusRepasse: statusRepasse || '(vazio)',
+      });
+    });
+
+    const closets = Object.keys(byCloset).sort().map(c => ({
+      closet: c, total: Math.round(byCloset[c].total * 100) / 100, itens: byCloset[c].itens,
+    }));
+    return ContentService.createTextOutput(JSON.stringify({ ok: true, closets: closets }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Remove uma linha do ESTOQUE pelo Código exato — usada só pra limpar linhas órfãs (ex: um
+// registro que gravou os dados mas falhou depois na formatação, antes do fix fail-safe).
+// Confirma o Status atual antes de apagar, pra nunca remover a linha errada.
+function _handleDeleteByCodigoAction_(params) {
+  try {
+    const codigo = String(params.codigo || '').trim();
+    if (!codigo) throw new Error('Parâmetro "codigo" é obrigatório.');
+
+    const lock = LockService.getScriptLock();
+    lock.waitLock(30000);
+    try {
+      const sheet   = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+      const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(h => String(h).trim());
+      const idCol   = headers.indexOf('Código');
+      const lastRow = sheet.getLastRow();
+      const ids = sheet.getRange(2, idCol + 1, lastRow - 1, 1).getValues().flat().map(v => String(v).trim());
+      const idx = ids.indexOf(codigo);
+      if (idx === -1) throw new Error('Código não encontrado: ' + codigo);
+
+      const row = idx + 2;
+      const rowValues = sheet.getRange(row, 1, 1, sheet.getLastColumn()).getValues()[0];
+      // deleteRow() estava silenciosamente não fazendo efeito (suspeita: intervalo protegido
+      // bloqueando a exclusão estrutural da linha, mesmo permitindo editar valores). Em vez de
+      // apagar a linha, limpamos o conteúdo — funciona mesmo com essa proteção, e uma linha em
+      // branco no meio do ESTOQUE não quebra nada (o próprio _lastDataRow_ já ignora brancos).
+      sheet.getRange(row, 1, 1, sheet.getLastColumn()).clearContent();
+      SpreadsheetApp.flush();
+
+      const idsDepois = sheet.getRange(2, idCol + 1, Math.max(sheet.getLastRow() - 1, 0), 1).getValues().flat().map(v => String(v).trim());
+      if (idsDepois.indexOf(codigo) > -1) {
+        throw new Error('Limpeza executou mas o código ainda aparece na planilha — tente de novo.');
+      }
+
+      return ContentService.createTextOutput(JSON.stringify({ ok: true, clearedRow: row, values: rowValues }))
+        .setMimeType(ContentService.MimeType.JSON);
+    } finally {
+      lock.releaseLock();
+    }
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Renomeia um closet (nome exato) em toda a coluna "Closet" do ESTOQUE e do CATALOGO —
+// usada pra corrigir/consolidar nome de closet (ex: "Jéssica (vovó)" -> "Jessica Regazzi (vovó)").
+function _handleRenameClosetAction_(params) {
+  try {
+    const oldName = String(params.oldName || '').trim();
+    const newName = String(params.newName || '').trim();
+    if (!oldName || !newName) throw new Error('Parâmetros "oldName" e "newName" são obrigatórios.');
+
+    const lock = LockService.getScriptLock();
+    lock.waitLock(30000);
+    try {
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      const result = {};
+      ['ESTOQUE', 'CATALOGO'].forEach(name => {
+        const sheet = ss.getSheetByName(name);
+        if (!sheet) { result[name] = 0; return; }
+        const lastRow = sheet.getLastRow();
+        if (lastRow < 2) { result[name] = 0; return; }
+        const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(h => String(h).trim());
+        const closetCol = headers.indexOf('Closet');
+        if (closetCol === -1) { result[name] = 0; return; }
+
+        const range = sheet.getRange(2, closetCol + 1, lastRow - 1, 1);
+        const values = range.getValues();
+        let changed = 0;
+        for (let i = 0; i < values.length; i++) {
+          if (String(values[i][0]).trim() === oldName) { values[i][0] = newName; changed++; }
+        }
+        if (changed > 0) range.setValues(values);
+        result[name] = changed;
+      });
+      return ContentService.createTextOutput(JSON.stringify({ ok: true, changed: result }))
+        .setMimeType(ContentService.MimeType.JSON);
+    } finally {
+      lock.releaseLock();
+    }
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Atualiza campos pontuais (Marca, Descritivo Peça, Tamanho, Cor) de uma peça já registrada,
+// achada pelo Código exato — usada pra correções (ex: mover marca embutida no descritivo pro
+// campo certo). Só mexe nos campos passados; os demais ficam como estão.
+const UPDATE_FIELDS_ALLOWED = ['Marca', 'Descritivo Peça', 'Tamanho', 'Cor'];
+function _handleUpdateFieldsAction_(params) {
+  try {
+    const codigo = String(params.codigo || '').trim();
+    if (!codigo) throw new Error('Parâmetro "codigo" é obrigatório.');
+
+    const lock = LockService.getScriptLock();
+    lock.waitLock(30000);
+    try {
+      const sheet   = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+      const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(h => String(h).trim());
+      const idCol   = headers.indexOf('Código');
+      const lastRow = sheet.getLastRow();
+      const ids = sheet.getRange(2, idCol + 1, lastRow - 1, 1).getValues().flat().map(v => String(v).trim());
+      const idx = ids.indexOf(codigo);
+      if (idx === -1) throw new Error('Código não encontrado: ' + codigo);
+      const row = idx + 2;
+
+      const changed = {};
+      UPDATE_FIELDS_ALLOWED.forEach(name => {
+        if (params[name] === undefined) return;
+        const col = headers.indexOf(name);
+        if (col === -1) return;
+        sheet.getRange(row, col + 1).setValue(params[name]);
+        changed[name] = params[name];
+      });
+      return ContentService.createTextOutput(JSON.stringify({ ok: true, codigo: codigo, changed: changed }))
+        .setMimeType(ContentService.MimeType.JSON);
+    } finally {
+      lock.releaseLock();
+    }
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Marca como pago o repasse de todas as peças vendidas (Status=Pago) de um closet cujo
+// Status Repasse ainda não é "Pago" — grava Data Repasse com a data informada (ou hoje).
+// Retorna a lista de códigos afetados, pra conferência.
+function _handleMarcarRepassePagoAction_(params) {
+  try {
+    const closet = String(params.closet || '').trim();
+    if (!closet) throw new Error('Parâmetro "closet" é obrigatório.');
+    let dataRepasse = new Date();
+    if (params.dataRepasse) {
+      const partes = String(params.dataRepasse).trim().split('/');
+      if (partes.length !== 3) throw new Error('dataRepasse deve estar no formato dd/mm/aaaa.');
+      dataRepasse = new Date(Number(partes[2]), Number(partes[1]) - 1, Number(partes[0]));
+    }
+
+    const lock = LockService.getScriptLock();
+    lock.waitLock(30000);
+    try {
+      const sheet   = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+      const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(h => String(h).trim());
+      const colOf = name => headers.indexOf(name);
+      const idCol            = colOf('Código');
+      const closetCol        = colOf('Closet');
+      const statusCol        = colOf('Status');
+      const statusRepasseCol = colOf('Status Repasse');
+      const dataRepasseCol   = _ensureColumn_(sheet, 'Data Repasse');
+
+      const lastRow = sheet.getLastRow();
+      if (lastRow < 2) throw new Error('ESTOQUE vazio.');
+      const data = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
+
+      const afetados = [];
+      for (let i = 0; i < data.length; i++) {
+        const row = data[i];
+        if (String(row[closetCol] || '').trim() !== closet) continue;
+        if (String(row[statusCol] || '').trim() !== 'Pago') continue;
+        if (String(row[statusRepasseCol] || '').trim() === 'Pago') continue;
+
+        const sheetRow = i + 2;
+        sheet.getRange(sheetRow, statusRepasseCol + 1).setValue('Pago');
+        sheet.getRange(sheetRow, dataRepasseCol + 1).setValue(dataRepasse);
+        afetados.push(String(row[idCol]));
+      }
+
+      return ContentService.createTextOutput(JSON.stringify({ ok: true, closet: closet, codigos: afetados }))
+        .setMimeType(ContentService.MimeType.JSON);
+    } finally {
+      lock.releaseLock();
+    }
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Lista TODAS as linhas do ESTOQUE de um closet, qualquer status (Disponível, Pago, etc.) —
+// só leitura, usada pra conferência de duplicidade item a item (uma peça pode já existir como
+// "Disponível" com uma descrição diferente da que usamos ao registrar a venda).
+function _handleListByClosetAction_(params) {
+  try {
+    const closet = String(params.closet || '').trim();
+    if (!closet) throw new Error('Parâmetro "closet" é obrigatório.');
+
+    const sheet   = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) {
+      return ContentService.createTextOutput(JSON.stringify({ ok: true, headers: [], rows: [] }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(h => String(h).trim());
+    const closetCol = headers.indexOf('Closet');
+    const data = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
+
+    const rows = [];
+    data.forEach(row => {
+      if (String(row[closetCol] || '').trim() === closet) {
+        rows.push(row.map(v => (v instanceof Date) ? v.toISOString() : v));
+      }
+    });
+    return ContentService.createTextOutput(JSON.stringify({ ok: true, headers: headers, rows: rows }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Marca uma peça JÁ EXISTENTE no ESTOQUE (achada pelo Código, qualquer status) como vendida,
+// com data histórica — usada quando a peça já estava cadastrada (ex: "Disponível" com preço
+// placeholder) e não deveria ter virado uma linha nova via vendaDireta.
+function _handleMarcarExistenteVendidaAction_(params) {
+  try {
+    const codigo = String(params.codigo || '').trim();
+    if (!codigo) throw new Error('Parâmetro "codigo" é obrigatório.');
+    const compradora = String(params.compradora || '').trim();
+    if (!compradora) throw new Error('Compradora é obrigatória.');
+    const preco = parseFloat(String(params.preco).replace(',', '.'));
+    if (isNaN(preco) || preco <= 0) throw new Error('Preço inválido.');
+
+    let dataVenda = new Date();
+    if (params.dataVenda) {
+      const partes = String(params.dataVenda).trim().split('/');
+      if (partes.length !== 3) throw new Error('dataVenda deve estar no formato dd/mm/aaaa.');
+      dataVenda = new Date(Number(partes[2]), Number(partes[1]) - 1, Number(partes[0]));
+    }
+
+    const lock = LockService.getScriptLock();
+    lock.waitLock(30000);
+    try {
+      const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+      _ensureOrigemCadastroColumn_(sheet);
+      const dataVendaCol     = _ensureColumn_(sheet, 'Data Venda');
+      const precoVendaCol    = _ensureColumn_(sheet, 'Preço Venda');
+      const pagamentoCol     = _ensureColumn_(sheet, 'Forma de Pagamento');
+      const mesCol           = _ensureColumn_(sheet, 'Mês');
+      const anoCol           = _ensureColumn_(sheet, 'Ano');
+      const statusRepasseCol = _ensureColumn_(sheet, 'Status Repasse');
+
+      const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(h => String(h).trim());
+      const colOf = name => headers.indexOf(name);
+      const idCol            = colOf('Código');
+      const statusCol        = colOf('Status');
+      const compradoraCol    = colOf('Compradora');
+      const precoTotalCol    = colOf('Preço Total');
+      const repasseCol       = colOf('Repasse');
+      const comissaoCol      = colOf('Comissão');
+      const valorRepasseCol  = colOf('Valor Repasse');
+      const valorComissaoCol = colOf('Valor Comissão');
+
+      const lastRow = sheet.getLastRow();
+      const ids = sheet.getRange(2, idCol + 1, lastRow - 1, 1).getValues().flat().map(v => String(v).trim());
+      const idx = ids.indexOf(codigo);
+      if (idx === -1) throw new Error('Código não encontrado: ' + codigo);
+      const row = idx + 2;
+      const rowValues = sheet.getRange(row, 1, 1, sheet.getLastColumn()).getValues()[0];
+      if (String(rowValues[statusCol] || '').trim() === 'Pago') {
+        throw new Error('Essa peça já está marcada como vendida.');
+      }
+
+      sheet.getRange(row, statusCol + 1).setValue('Pago');
+      sheet.getRange(row, compradoraCol + 1).setValue(compradora);
+      sheet.getRange(row, dataVendaCol + 1).setValue(dataVenda);
+      sheet.getRange(row, precoVendaCol + 1).setValue(preco);
+      if (params.formaPagamento !== undefined) sheet.getRange(row, pagamentoCol + 1).setValue(params.formaPagamento);
+      sheet.getRange(row, mesCol + 1).setValue(MESES_PT[dataVenda.getMonth()]);
+      sheet.getRange(row, anoCol + 1).setValue(dataVenda.getFullYear());
+      sheet.getRange(row, statusRepasseCol + 1).setValue('Pendente');
+      // Atualiza o Preço Total se ele era só um placeholder (ex: peça sem preço definido ainda).
+      if (precoTotalCol > -1) {
+        const precoAtual = Number(rowValues[precoTotalCol]) || 0;
+        if (precoAtual <= 1) sheet.getRange(row, precoTotalCol + 1).setValue(preco);
+      }
+
+      const repassePct  = Number(rowValues[repasseCol]) || 0;
+      const comissaoPct = Number(rowValues[comissaoCol]) || 0;
+      if (valorRepasseCol > -1)  sheet.getRange(row, valorRepasseCol + 1).setValue(preco * repassePct);
+      if (valorComissaoCol > -1) sheet.getRange(row, valorComissaoCol + 1).setValue(preco * comissaoPct);
+
+      return ContentService.createTextOutput(JSON.stringify({ ok: true, codigo: codigo, row: row }))
+        .setMimeType(ContentService.MimeType.JSON);
+    } finally {
+      lock.releaseLock();
+    }
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Acha TODAS as linhas (não só a primeira) que batem com um Código exato — diagnóstico pra
+// confirmar se existe alguma duplicata física oculta na planilha.
+function _handleFindAllByCodigoAction_(params) {
+  try {
+    const codigo = String(params.codigo || '').trim();
+    if (!codigo) throw new Error('Parâmetro "codigo" é obrigatório.');
+
+    const sheet   = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(h => String(h).trim());
+    const idCol   = headers.indexOf('Código');
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) throw new Error('ESTOQUE vazio.');
+
+    const ids = sheet.getRange(2, idCol + 1, lastRow - 1, 1).getValues().flat().map(v => String(v).trim());
+    const matches = [];
+    ids.forEach((id, i) => {
+      if (id === codigo) matches.push(i + 2);
+    });
+
+    return ContentService.createTextOutput(JSON.stringify({
+      ok: true, codigo: codigo, spreadsheetId: SpreadsheetApp.getActiveSpreadsheet().getId(),
+      lastRow: lastRow, rowsFound: matches,
+    })).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
   }
 }
 

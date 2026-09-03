@@ -162,6 +162,11 @@
     .ia-note { padding: 10px 12px; background: color-mix(in srgb, var(--accent-2) 16%, var(--card)); border: 1px solid color-mix(in srgb, var(--accent-2) 40%, var(--line)); border-radius: 8px; font-size: 0.8rem; color: var(--ink-2); line-height: 1.45; display: none; }
     .ia-note.show { display: block; }
     .nova-hint { font-size: 0.75rem; color: var(--mute); line-height: 1.4; }
+
+    /* ── Registrar venda ── */
+    .venda-overlay { position: fixed; inset: 0; background: rgba(18,17,16,0.5); z-index: 60; display: flex; align-items: flex-end; justify-content: center; }
+    .venda-modal { background: var(--card); width: 100%; max-width: 480px; border-radius: 16px 16px 0 0; padding: 20px 16px calc(24px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 12px; }
+    .venda-modal-title { font-size: 0.95rem; font-weight: 700; line-height: 1.3; }
   </style>
 </head>
 <body>
@@ -185,6 +190,13 @@
         <div>
           <div class="card-title">Cadastrar peça</div>
           <div class="card-sub">cadastro assistido por IA</div>
+        </div>
+      </div>
+      <div class="card ready" onclick="showView('vender')">
+        <div class="icon-chip">💵</div>
+        <div>
+          <div class="card-title">Registrar venda</div>
+          <div class="card-sub">marcar peça como vendida</div>
         </div>
       </div>
       <div class="card ready" onclick="showView('tarefas')">
@@ -352,6 +364,17 @@
   </div>
 </div>
 
+<!-- ── VENDER ── -->
+<div class="view" id="view-vender">
+  <div class="search-wrap" style="padding-top:14px;">
+    <input class="search-input" id="vender-search" type="search" placeholder="buscar por marca, descrição ou código…" autocomplete="off" />
+  </div>
+  <div class="closet-filter" id="vender-closet-filter"></div>
+  <div id="vender-app">
+    <div class="loading-state">carregando peças…</div>
+  </div>
+</div>
+
 <!-- ── PAINEL (placeholder) ── -->
 <div class="view" id="view-painel">
   <div class="placeholder-view">
@@ -367,6 +390,16 @@
     <div class="placeholder-icon">👥</div>
     <div class="placeholder-title">Compradoras</div>
     <div class="placeholder-sub">Base de contatos e histórico de compras — em breve.</div>
+  </div>
+</div>
+
+<div class="venda-overlay" id="venda-overlay" style="display:none;">
+  <div class="venda-modal">
+    <div class="venda-modal-title" id="venda-modal-title"></div>
+    <div class="field"><label>Compradora</label><input id="venda-compradora" type="text" placeholder="nome da compradora" /></div>
+    <div class="field"><label>Preço de venda (R$)</label><input id="venda-preco" type="text" inputmode="decimal" placeholder="0,00" /></div>
+    <button class="btn btn-dark" id="venda-confirm">Confirmar venda</button>
+    <button class="btn btn-outline" id="venda-cancel">Cancelar</button>
   </div>
 </div>
 
@@ -427,7 +460,7 @@
 
   // ── Navegação (SPA) ────────────────────────────────────────
   function renderHeader(name) {
-    const titles = { fotos: 'Fotos do catálogo', nova: 'Cadastrar peça', tarefas: 'Tarefas', painel: 'Painel', crm: 'Compradoras' };
+    const titles = { fotos: 'Fotos do catálogo', nova: 'Cadastrar peça', tarefas: 'Tarefas', vender: 'Registrar venda', painel: 'Painel', crm: 'Compradoras' };
     const el = document.getElementById('app-header');
     if (name === 'home') {
       el.innerHTML = `
@@ -447,6 +480,7 @@
     if (name === 'home') loadHomeStats();
     if (name === 'home' || name === 'tarefas') loadTasks();
     if (name === 'fotos' || name === 'nova') loadPieces();
+    if (name === 'vender') loadVendaPieces();
     window.scrollTo(0, 0);
   }
 
@@ -756,6 +790,136 @@
     renderFilter();
     renderList();
   }
+
+  // ── Registrar venda ─────────────────────────────────────────
+  let vendaPieces      = [];
+  let vendaLoaded      = false;
+  let vendaActiveCloset = 'todos';
+  let vendaSearch       = '';
+  let activeVendaPiece  = null;
+
+  function loadVendaPieces() {
+    if (vendaLoaded) return;
+    google.script.run
+      .withSuccessHandler(data => {
+        vendaPieces = data;
+        vendaLoaded = true;
+        renderVendaFilter();
+        renderVendaList();
+      })
+      .withFailureHandler(err => {
+        document.getElementById('vender-app').innerHTML =
+          `<div class="empty">Erro ao carregar.<br><small>${err.message}</small></div>`;
+      })
+      .getPieces();
+  }
+
+  function vendaClosets() {
+    return [...new Set(vendaPieces.map(p => p.closet))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  }
+
+  function renderVendaFilter() {
+    const closets = vendaClosets();
+    document.getElementById('vender-closet-filter').innerHTML = [
+      `<button class="filter-chip is-on" data-closet="todos">todas (${vendaPieces.length})</button>`,
+      ...closets.map(c => {
+        const count = vendaPieces.filter(p => p.closet === c).length;
+        return `<button class="filter-chip" data-closet="${c}">${c} (${count})</button>`;
+      })
+    ].join('');
+
+    document.querySelectorAll('#vender-closet-filter .filter-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#vender-closet-filter .filter-chip').forEach(b => b.classList.remove('is-on'));
+        btn.classList.add('is-on');
+        vendaActiveCloset = btn.dataset.closet;
+        renderVendaList();
+      });
+    });
+  }
+
+  function renderVendaList() {
+    const app = document.getElementById('vender-app');
+    const q = vendaSearch.toLowerCase();
+    const list = vendaPieces.filter(p =>
+      (vendaActiveCloset === 'todos' || p.closet === vendaActiveCloset) &&
+      (!q || p.desc.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q) || p.id.toLowerCase().includes(q))
+    );
+
+    if (!list.length) {
+      app.innerHTML = `<div class="empty">Nenhuma peça disponível encontrada.</div>`;
+      return;
+    }
+
+    app.innerHTML = `<div class="list">${list.map(p => `
+      <div class="piece-card" data-row="${p.row}">
+        <div class="thumb">${p.photoUrl ? `<img src="${p.photoUrl}">` : '👗'}</div>
+        <div class="piece-info">
+          <div class="piece-id">${p.id} · ${p.closet}</div>
+          <div class="piece-desc">${p.desc}</div>
+          <div class="piece-meta">${[p.brand, p.size, formatPrice(p.price)].filter(Boolean).join(' · ')}</div>
+        </div>
+      </div>`).join('')}</div>`;
+
+    app.querySelectorAll('.piece-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const row = parseInt(card.dataset.row);
+        openVendaModal(vendaPieces.find(p => p.row === row));
+      });
+    });
+  }
+
+  document.getElementById('vender-search').addEventListener('input', e => {
+    vendaSearch = e.target.value.trim();
+    renderVendaList();
+  });
+
+  function openVendaModal(piece) {
+    activeVendaPiece = piece;
+    document.getElementById('venda-modal-title').textContent = `${piece.id} · ${piece.desc}`;
+    document.getElementById('venda-compradora').value = '';
+    document.getElementById('venda-preco').value = piece.price || '';
+    document.getElementById('venda-overlay').style.display = 'flex';
+    document.getElementById('venda-compradora').focus();
+  }
+
+  function closeVendaModal() {
+    document.getElementById('venda-overlay').style.display = 'none';
+    activeVendaPiece = null;
+  }
+
+  document.getElementById('venda-cancel').addEventListener('click', closeVendaModal);
+
+  document.getElementById('venda-confirm').addEventListener('click', () => {
+    if (!activeVendaPiece) return;
+    const compradora = document.getElementById('venda-compradora').value.trim();
+    const preco = document.getElementById('venda-preco').value.trim();
+    if (!compradora) { showToast('Digite o nome da compradora.'); return; }
+    if (!preco) { showToast('Digite o preço de venda.'); return; }
+
+    const piece = activeVendaPiece;
+    const btn = document.getElementById('venda-confirm');
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner" style="border-top-color:#fff;"></div> registrando…';
+
+    google.script.run
+      .withSuccessHandler(res => {
+        btn.disabled = false;
+        btn.innerHTML = 'Confirmar venda';
+        closeVendaModal();
+        vendaPieces = vendaPieces.filter(p => p.row !== piece.row);
+        renderVendaFilter();
+        renderVendaList();
+        showToast(`${res.codigo} vendida ✓`, 3000);
+      })
+      .withFailureHandler(err => {
+        btn.disabled = false;
+        btn.innerHTML = 'Confirmar venda';
+        showToast('Erro: ' + (err.message || 'tente novamente'), 4000);
+        console.error(err);
+      })
+      .registrarVenda(piece.row, compradora, preco);
+  });
 
   // ── Cadastro de nova peça ──────────────────────────────────
   // nova.photos = fotos do produto (viram Foto/site). nova.etiqueta = foto única,
