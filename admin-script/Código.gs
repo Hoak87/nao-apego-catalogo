@@ -124,6 +124,12 @@ function doGet(e) {
     if (e && e.parameter && e.parameter.action === 'findAllByCodigo') {
       return _handleFindAllByCodigoAction_(e.parameter);
     }
+    if (e && e.parameter && e.parameter.action === 'listProtections') {
+      return _handleListProtectionsAction_();
+    }
+    if (e && e.parameter && e.parameter.action === 'testWriteCell') {
+      return _handleTestWriteCellAction_(e.parameter);
+    }
 
     return HtmlService
       .createHtmlOutputFromFile('Admin')
@@ -1181,7 +1187,7 @@ function _handleRenameClosetAction_(params) {
 // Atualiza campos pontuais (Marca, Descritivo Peça, Tamanho, Cor) de uma peça já registrada,
 // achada pelo Código exato — usada pra correções (ex: mover marca embutida no descritivo pro
 // campo certo). Só mexe nos campos passados; os demais ficam como estão.
-const UPDATE_FIELDS_ALLOWED = ['Marca', 'Descritivo Peça', 'Tamanho', 'Cor'];
+const UPDATE_FIELDS_ALLOWED = ['Marca', 'Descritivo Peça', 'Tamanho', 'Cor', 'Status Repasse', 'Data Repasse'];
 function _handleUpdateFieldsAction_(params) {
   try {
     const codigo = String(params.codigo || '').trim();
@@ -1200,14 +1206,24 @@ function _handleUpdateFieldsAction_(params) {
       const row = idx + 2;
 
       const changed = {};
+      const cols = {};
       UPDATE_FIELDS_ALLOWED.forEach(name => {
         if (params[name] === undefined) return;
         const col = headers.indexOf(name);
         if (col === -1) return;
         sheet.getRange(row, col + 1).setValue(params[name]);
         changed[name] = params[name];
+        cols[name] = col;
       });
-      return ContentService.createTextOutput(JSON.stringify({ ok: true, codigo: codigo, changed: changed }))
+      SpreadsheetApp.flush();
+
+      const falhas = [];
+      Object.keys(cols).forEach(name => {
+        const valorAtual = sheet.getRange(row, cols[name] + 1).getValue();
+        if (!valorAtual) falhas.push(name);
+      });
+
+      return ContentService.createTextOutput(JSON.stringify({ ok: true, codigo: codigo, changed: changed, falhas: falhas }))
         .setMimeType(ContentService.MimeType.JSON);
     } finally {
       lock.releaseLock();
@@ -1249,19 +1265,46 @@ function _handleMarcarRepassePagoAction_(params) {
       const data = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
 
       const afetados = [];
+      const sheetRows = [];
       for (let i = 0; i < data.length; i++) {
         const row = data[i];
         if (String(row[closetCol] || '').trim() !== closet) continue;
         if (String(row[statusCol] || '').trim() !== 'Pago') continue;
-        if (String(row[statusRepasseCol] || '').trim() === 'Pago') continue;
+        // Só pula se Status Repasse JÁ é Pago E a Data Repasse já está preenchida — senão,
+        // reaplica (corrige casos onde uma execução anterior marcou o status mas não a data,
+        // instabilidade já vista antes com escritas na planilha).
+        const jaTemStatus = String(row[statusRepasseCol] || '').trim() === 'Pago';
+        const jaTemData    = !!row[dataRepasseCol];
+        if (jaTemStatus && jaTemData) continue;
 
-        const sheetRow = i + 2;
-        sheet.getRange(sheetRow, statusRepasseCol + 1).setValue('Pago');
-        sheet.getRange(sheetRow, dataRepasseCol + 1).setValue(dataRepasse);
+        sheetRows.push(i + 2);
         afetados.push(String(row[idCol]));
       }
 
-      return ContentService.createTextOutput(JSON.stringify({ ok: true, closet: closet, codigos: afetados }))
+      // Escrita em LOTE via getRangeList (uma chamada por coluna, em vez de 2 chamadas por
+      // linha num loop) — um loop célula a célula linha a linha se mostrou pouco confiável em
+      // listas grandes (Status Repasse gravava, Data Repasse não, mesmo sem erro nenhum).
+      if (sheetRows.length) {
+        const statusRefs = sheetRows.map(r => sheet.getRange(r, statusRepasseCol + 1).getA1Notation());
+        const dataRefs   = sheetRows.map(r => sheet.getRange(r, dataRepasseCol + 1).getA1Notation());
+        sheet.getRangeList(statusRefs).setValue('Pago');
+        sheet.getRangeList(dataRefs).setValue(dataRepasse);
+        SpreadsheetApp.flush();
+      }
+
+      // Auto-verificação: relê as linhas afetadas e confere se Data Repasse realmente gravou.
+      const falhas = [];
+      if (afetados.length) {
+        const idsAtualizados = sheet.getRange(2, idCol + 1, sheet.getLastRow() - 1, 1).getValues().flat().map(v => String(v).trim());
+        afetados.forEach(codigo => {
+          const idx2 = idsAtualizados.indexOf(codigo);
+          if (idx2 === -1) return;
+          const valorData = sheet.getRange(idx2 + 2, dataRepasseCol + 1).getValue();
+          if (!valorData) falhas.push(codigo);
+        });
+      }
+
+      return ContentService.createTextOutput(JSON.stringify({ ok: true, closet: closet, codigos: afetados, falhasDataRepasse: falhas }))
         .setMimeType(ContentService.MimeType.JSON);
     } finally {
       lock.releaseLock();
@@ -1408,6 +1451,77 @@ function _handleFindAllByCodigoAction_(params) {
     return ContentService.createTextOutput(JSON.stringify({
       ok: true, codigo: codigo, spreadsheetId: SpreadsheetApp.getActiveSpreadsheet().getId(),
       lastRow: lastRow, rowsFound: matches,
+    })).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Lista as proteções (intervalo e planilha inteira) do ESTOQUE — diagnóstico pra entender
+// escritas que "funcionam" (sem erro) mas não persistem em certas colunas/linhas.
+function _handleListProtectionsAction_() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+    const out = [];
+
+    const sheetProtections = sheet.getProtections(SpreadsheetApp.ProtectionType.SHEET);
+    sheetProtections.forEach(p => {
+      out.push({
+        tipo: 'SHEET', descricao: p.getDescription(),
+        editores: p.getEditors().map(u => u.getEmail()),
+      });
+    });
+
+    const rangeProtections = sheet.getProtections(SpreadsheetApp.ProtectionType.RANGE);
+    rangeProtections.forEach(p => {
+      const r = p.getRange();
+      out.push({
+        tipo: 'RANGE', descricao: p.getDescription(), a1: r.getA1Notation(),
+        linhaInicio: r.getRow(), linhaFim: r.getLastRow(), colInicio: r.getColumn(), colFim: r.getLastColumn(),
+        editores: p.getEditors().map(u => u.getEmail()),
+      });
+    });
+
+    return ContentService.createTextOutput(JSON.stringify({ ok: true, protections: out }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Escreve num campo específico de um Código e devolve o que ficou gravado imediatamente
+// (mesma execução) — diagnóstico mínimo e isolado pro problema de escrita em Data Repasse.
+function _handleTestWriteCellAction_(params) {
+  try {
+    const codigo = String(params.codigo || '').trim();
+    const campo  = String(params.campo || '').trim();
+    const valor  = String(params.valor || '').trim();
+    if (!codigo || !campo) throw new Error('Parâmetros "codigo" e "campo" são obrigatórios.');
+
+    const sheet   = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(h => String(h).trim());
+    const idCol   = headers.indexOf('Código');
+    const campoCol = headers.indexOf(campo);
+    if (campoCol === -1) throw new Error('Campo não encontrado: ' + campo);
+
+    const lastRow = sheet.getLastRow();
+    const ids = sheet.getRange(2, idCol + 1, lastRow - 1, 1).getValues().flat().map(v => String(v).trim());
+    const idx = ids.indexOf(codigo);
+    if (idx === -1) throw new Error('Código não encontrado: ' + codigo);
+    const row = idx + 2;
+
+    const antes = sheet.getRange(row, campoCol + 1).getValue();
+    const cell = sheet.getRange(row, campoCol + 1);
+    cell.setValue(valor);
+    SpreadsheetApp.flush();
+    const depois = cell.getValue();
+    const depoisReRead = sheet.getRange(row, campoCol + 1).getValue(); // nova referência de range, não reaproveitada
+
+    return ContentService.createTextOutput(JSON.stringify({
+      ok: true, codigo: codigo, row: row, campoCol: campoCol,
+      valorAntes: antes, valorEnviado: valor, valorDepois: depois, valorDepoisRereferenciado: depoisReRead,
     })).setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
     return ContentService.createTextOutput(JSON.stringify({ ok: false, error: err.message }))
