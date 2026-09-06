@@ -130,6 +130,9 @@ function doGet(e) {
     if (e && e.parameter && e.parameter.action === 'testWriteCell') {
       return _handleTestWriteCellAction_(e.parameter);
     }
+    if (e && e.parameter && e.parameter.action === 'addTask') {
+      return _handleAddTaskAction_(e.parameter);
+    }
 
     return HtmlService
       .createHtmlOutputFromFile('Admin')
@@ -560,6 +563,38 @@ function createPiece(data) {
     const colOf = name => headers.indexOf(name);
 
     const { lastRow: estLastDataRow, codigoValues: codes } = _lastDataRow_(estoque, colOf('Código'));
+
+    // ── Detecção de duplicata (reenvio acidental após erro/timeout aparente do Apps Script) ──
+    // Compara com peças do mesmo closet cadastradas nos últimos 30min com descritivo+marca+tamanho+cor+preço
+    // idênticos (normalizado) — não bloqueia, só avisa via erro especial; o client confirma com o usuário e,
+    // se confirmado, reenvia com data.forcarDuplicado=true pra pular essa checagem.
+    if (!data.forcarDuplicado && estLastDataRow > 1) {
+      const dataEntradaCol = colOf('Data Entrada');
+      const closetCol      = colOf('Closet');
+      const descCol        = colOf('Descritivo Peça');
+      const marcaCol       = colOf('Marca');
+      const tamCol         = colOf('Tamanho');
+      const corCol         = colOf('Cor');
+      const precoCol       = colOf('Preço Total');
+      const codigoCol      = colOf('Código');
+      const norm = v => String(v || '').trim().toLowerCase();
+      const rowsDup = estoque.getRange(2, 1, estLastDataRow - 1, estoque.getLastColumn()).getValues();
+      const agora = new Date().getTime();
+      const JANELA_MS = 30 * 60 * 1000; // 30 minutos
+      for (let i = 0; i < rowsDup.length; i++) {
+        const row = rowsDup[i];
+        if (!row[dataEntradaCol]) continue;
+        if (agora - new Date(row[dataEntradaCol]).getTime() > JANELA_MS) continue;
+        if (norm(row[closetCol]) === norm(data.closet) &&
+            norm(row[descCol])   === norm(data.descritivo) &&
+            norm(row[marcaCol])  === norm(data.marca) &&
+            norm(row[tamCol])    === norm(data.tamanho) &&
+            norm(row[corCol])    === norm(data.cor) &&
+            Number(row[precoCol]) === preco) {
+          throw new Error('DUPLICADO:' + row[codigoCol]);
+        }
+      }
+    }
 
     // ── Código: PREFIXO + AAMM + sequência de 3 dígitos ──
     const yymm = Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), 'yyMM');
@@ -1570,6 +1605,21 @@ function getHomeStats() {
     closets: closets.size,
     compradoras: compradoras.size,
   };
+}
+
+// Cria uma tarefa na aba TAREFAS via HTTP (usada pelo Claude pra criar macrotarefas pra
+// Luiza via chat/curl, reaproveitando a senha do admin) — chama a mesma addTask() de baixo.
+function _handleAddTaskAction_(params) {
+  try {
+    const texto = params.texto;
+    const tag   = params.tag || '';
+    const task  = addTask(texto, tag);
+    return ContentService.createTextOutput(JSON.stringify({ ok: true, task: task }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
 }
 
 // ─── TAREFAS ────────────────────────────────────────────────────────────────

@@ -1150,21 +1150,12 @@
       .analyzeVoiceText(texto);
   });
 
-  document.getElementById('nova-save').addEventListener('click', () => {
+  // Extraída pra função própria pra poder ser rechamada no reenvio confirmado de duplicata,
+  // sem duplicar a lógica de sucesso/erro do submit original.
+  function salvarPeca(payload) {
     const btn = document.getElementById('nova-save');
-    nova.saving = true;
     btn.disabled = true;
     btn.innerHTML = '<div class="spinner" style="border-top-color:#fff;"></div> salvando…';
-
-    const payload = {
-      closet: novaClosetValue(),
-      marca:  document.getElementById('nova-marca').value.trim(),
-      descritivo: document.getElementById('nova-desc').value.trim(),
-      tamanho: document.getElementById('nova-tam').value.trim(),
-      cor:    document.getElementById('nova-cor').value.trim(),
-      preco:  document.getElementById('nova-preco').value.trim(),
-      fotos:  nova.photos.map(p => ({ base64: p.base64, mimeType: p.mimeType })),
-    };
 
     google.script.run
       .withSuccessHandler(codigo => {
@@ -1192,10 +1183,37 @@
         nova.saving = false;
         btn.innerHTML = 'Salvar no catálogo';
         updateNovaButtons();
-        showToast('Erro: ' + (err.message || 'tente novamente'), 4000);
+        const msg = (err && err.message) || '';
+        // Servidor detectou peça idêntica cadastrada há pouco — provável reenvio duplicado
+        // (ex: erro/timeout aparente na 1ª tentativa que na verdade tinha salvo). Confirma com
+        // quem está usando antes de criar mesmo assim, em vez de bloquear ou duplicar direto.
+        if (msg.indexOf('DUPLICADO:') === 0 && !payload.forcarDuplicado) {
+          const codigoExistente = msg.split(':')[1];
+          if (confirm('Já existe uma peça idêntica cadastrada há pouco (código ' + codigoExistente + '). Pode ser reenvio duplicado de um erro anterior. Cadastrar mesmo assim?')) {
+            payload.forcarDuplicado = true;
+            nova.saving = true;
+            salvarPeca(payload);
+            return;
+          }
+        }
+        showToast('Erro: ' + (msg || 'tente novamente'), 4000);
         console.error(err);
       })
       .createPiece(payload);
+  }
+
+  document.getElementById('nova-save').addEventListener('click', () => {
+    nova.saving = true;
+    const payload = {
+      closet: novaClosetValue(),
+      marca:  document.getElementById('nova-marca').value.trim(),
+      descritivo: document.getElementById('nova-desc').value.trim(),
+      tamanho: document.getElementById('nova-tam').value.trim(),
+      cor:    document.getElementById('nova-cor').value.trim(),
+      preco:  document.getElementById('nova-preco').value.trim(),
+      fotos:  nova.photos.map(p => ({ base64: p.base64, mimeType: p.mimeType })),
+    };
+    salvarPeca(payload);
   });
 
   // TEMP — debug do bug "peça não salva na planilha". Remover depois.
