@@ -169,6 +169,9 @@ function doGet(e) {
     if (e && e.parameter && e.parameter.action === 'addTask') {
       return _handleAddTaskAction_(e.parameter);
     }
+    if (e && e.parameter && e.parameter.action === 'exportEstoque') {
+      return _handleExportEstoqueAction_();
+    }
 
     return HtmlService
       .createHtmlOutputFromFile('Admin')
@@ -1507,6 +1510,27 @@ function _handleMarcarExistenteVendidaAction_(params) {
     } finally {
       lock.releaseLock();
     }
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Exporta o ESTOQUE inteiro (headers + todas as linhas, como veio da planilha, sem filtro de
+// Status) — usada pelo script de seed da migração pro Supabase (scripts/seed-from-sheets.mjs
+// no repo nao-apego-app), pra não precisar de uma credencial nova do Google só pra ler a
+// planilha. Só leitura, nenhuma escrita.
+function _handleExportEstoqueAction_() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+    const lastRow = sheet.getLastRow();
+    const lastCol = sheet.getLastColumn();
+    const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(h => String(h).trim());
+    const values = lastRow > 1 ? sheet.getRange(2, 1, lastRow - 1, lastCol).getValues() : [];
+    // Datas viram ISO string (JSON.stringify não serializa Date de forma útil pro outro lado).
+    const rows = values.map(row => row.map(v => (v instanceof Date ? v.toISOString() : v)));
+    return ContentService.createTextOutput(JSON.stringify({ ok: true, headers: headers, rows: rows }))
+      .setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
     return ContentService.createTextOutput(JSON.stringify({ ok: false, error: err.message }))
       .setMimeType(ContentService.MimeType.JSON);
