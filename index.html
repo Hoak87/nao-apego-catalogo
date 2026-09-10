@@ -86,11 +86,14 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
 .wa-pill .wa-icon{width:14px;height:14px;flex-shrink:0;fill:currentColor;}
 .logo{font-family:var(--f-display);font-weight:var(--display-weight);font-style:var(--display-style);letter-spacing:var(--display-tracking);font-size:20px;text-transform:lowercase;line-height:1;display:inline-flex;align-items:center;gap:9px;}
 .logo img{width:38px;height:auto;display:block;}
-.footer-logo-mark{display:flex;align-items:center;gap:18px;}
-.footer-logo-mark img{width:112px;height:auto;display:block;}
+.footer-logo-mark{display:flex;align-items:center;gap:16px;}
+.footer-logo-mark img{width:68px;height:auto;display:block;}
 
 /* ============ Hero ============ */
-.hero{padding:70px 0 80px;border-bottom:1px solid var(--line);}
+.hero{position:relative;overflow:hidden;padding:70px 0 80px;border-bottom:1px solid var(--line);}
+.hero-tex{position:absolute;inset:0;background:url('assets/texture-3.jpeg') center/cover no-repeat;opacity:0.4;}
+.hero-veil{position:absolute;inset:0;background:linear-gradient(100deg,var(--bg) 0%,color-mix(in srgb,var(--bg) 90%,transparent) 42%,transparent 78%);}
+.hero-inner{position:relative;z-index:1;}
 .hero-grid{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:end;}
 .hero-title{font-size:clamp(64px,9vw,148px);}
 .hero-title .it{font-family:var(--f-serif);font-style:italic;font-weight:300;letter-spacing:-0.01em;}
@@ -172,15 +175,21 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
 .quote .it{font-family:var(--f-serif);font-style:italic;font-weight:300;}
 
 /* ============ Influencers ============ */
+.influ-band{position:relative;overflow:hidden;background:var(--mist);}
+.influ-band-tex{position:absolute;inset:0;background:url('assets/texture-3.jpeg') center/cover no-repeat;mix-blend-mode:multiply;opacity:0.45;}
+.influ-band-inner{position:relative;z-index:1;}
 .influencer-row{display:flex;gap:32px;flex-wrap:wrap;padding:40px 0;}
 .influ{display:flex;flex-direction:column;align-items:center;gap:10px;cursor:pointer;}
 .influ-img{width:92px;height:92px;border-radius:50%;background:var(--mist);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-family:var(--f-display);font-weight:700;font-size:24px;color:var(--ink);letter-spacing:-0.02em;transition:border-color 0.2s;}
 .influ:hover .influ-img{border-color:var(--ink);}
+.influ-band .influ-img{background:var(--card);}
 .influ-name{font-size:12px;font-weight:500;letter-spacing:-0.005em;}
 .influ-count{font-size:10px;color:var(--mute);letter-spacing:0.06em;}
 
 /* ============ VIP Block ============ */
-.vip-block{background:var(--accent);color:var(--bg);padding:80px 48px;display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;}
+.vip-block{position:relative;overflow:hidden;background:var(--ink);color:var(--bg);padding:80px 48px;display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;}
+.vip-block::before{content:'';position:absolute;inset:0;background:url('assets/texture-4.jpeg') center/cover no-repeat;opacity:0.16;mix-blend-mode:screen;pointer-events:none;}
+.vip-block>*{position:relative;z-index:1;}
 @media(max-width:760px){.vip-block{grid-template-columns:1fr;padding:48px 24px;}}
 .vip-block h2{font-size:clamp(40px,5vw,72px);font-family:var(--f-display);font-weight:var(--display-weight);letter-spacing:var(--display-tracking);line-height:0.92;margin-bottom:0;}
 .vip-block .it{font-family:var(--f-serif);font-style:italic;font-weight:300;}
@@ -198,6 +207,20 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
 .vip-submit:hover{opacity:0.88;}
 .vip-or{font-size:11px;opacity:0.5;text-align:center;margin:10px 0;}
 
+/* ============ Shopping guide ============ */
+.guide{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-top:8px;}
+.guide-row{display:grid;grid-template-columns:auto 1fr;gap:18px;padding:32px 28px;border-right:1px solid var(--line);align-items:start;}
+.guide-row:last-child{border-right:0;}
+.guide-icon{width:56px;height:56px;border-radius:50%;background:var(--mist);border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--ink);flex-shrink:0;}
+.guide-icon svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.5;}
+.guide-text h4{font-size:12px;letter-spacing:0.1em;text-transform:uppercase;font-weight:600;margin-bottom:8px;}
+.guide-text p{font-size:14px;line-height:1.6;color:var(--ink-2);}
+.guide-text strong{font-weight:600;color:var(--ink);}
+.frame-quote{max-width:620px;margin:48px auto 0;text-align:center;padding:26px 36px;border:1px solid var(--line);border-radius:100px;font-family:var(--f-serif);font-style:italic;font-size:19px;line-height:1.4;color:var(--ink-2);}
+.barcode{margin-top:40px;display:flex;flex-direction:column;align-items:center;gap:10px;}
+.barcode-bars{width:100%;max-width:320px;height:48px;background:repeating-linear-gradient(90deg,var(--ink) 0 2px,transparent 2px 5px,var(--ink) 5px 8px,transparent 8px 12px,var(--ink) 12px 13px,transparent 13px 19px,var(--ink) 19px 22px,transparent 22px 25px);opacity:0.85;}
+.barcode-handle{font-family:var(--f-mono);font-size:11px;letter-spacing:0.14em;color:var(--mute);}
+
 /* ============ Live banner on home ============ */
 .live-banner{background:var(--accent);color:var(--bg);padding:72px 48px;display:grid;grid-template-columns:1fr auto;gap:40px;align-items:end;}
 [data-palette="tropical"] .live-banner{background:var(--accent);}
@@ -213,7 +236,7 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
 .footer{padding:80px 0 40px;}
 .footer-main{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;padding-bottom:60px;border-bottom:1px solid var(--line);}
 @media(max-width:800px){.footer-main{grid-template-columns:1fr 1fr;}}
-.footer-logo{font-size:clamp(64px,9vw,140px);line-height:0.9;}
+.footer-logo{font-size:clamp(34px,3.2vw,46px);line-height:0.95;}
 .footer-col h4{font-size:11px;letter-spacing:0.14em;text-transform:uppercase;font-weight:500;margin-bottom:20px;color:var(--mute);}
 .footer-col a{display:block;padding:4px 0;font-size:14px;transition:color 0.15s;}
 .footer-col a:hover{color:var(--accent);}
@@ -359,10 +382,12 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
   .live-card{grid-template-columns:1fr;gap:14px;}
   .live-banner{grid-template-columns:1fr;gap:28px;}
   .live-banner-meta{text-align:left;align-items:flex-start;}
+  .guide{grid-template-columns:1fr;}
+  .guide-row{border-right:0;border-bottom:1px solid var(--line);}
+  .guide-row:last-child{border-bottom:0;}
 }
 .product-image img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 </head>
 <body data-palette="quiet" data-type="editorial" data-lang="pt">
 
@@ -391,7 +416,9 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
 <section class="page is-active" data-page="home">
 
   <div class="hero">
-    <div class="wrap">
+    <div class="hero-tex"></div>
+    <div class="hero-veil"></div>
+    <div class="wrap hero-inner">
       <div class="hero-top">
         <div class="eyebrow-block">
           <div>
@@ -458,8 +485,9 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
   </section>
 
   <!-- Influencers -->
-  <section class="section">
-    <div class="wrap">
+  <section class="section influ-band">
+    <div class="influ-band-tex"></div>
+    <div class="wrap influ-band-inner">
       <div class="section-head">
         <h2 class="display section-title">quem <span class="it">desapegou</span> esta semana</h2>
       </div>
@@ -467,6 +495,42 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
     </div>
   </section>
 
+  <!-- Shopping guide -->
+  <section class="section">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 class="display section-title">shopping <span class="it">guide</span></h2>
+      </div>
+      <div class="guide">
+        <div class="guide-row">
+          <div class="guide-icon"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/><path d="M6 15h4"/></svg></div>
+          <div class="guide-text">
+            <h4>pagamento</h4>
+            <p><strong>PIX</strong> ou <strong>cartão de crédito</strong> — a taxa do cartão já está calculada, sem surpresa no fim.</p>
+          </div>
+        </div>
+        <div class="guide-row">
+          <div class="guide-icon"><svg viewBox="0 0 24 24"><path d="M1 8h11v9H1z"/><path d="M12 11h5l4 3v3h-9z"/><circle cx="5" cy="19" r="1.6"/><circle cx="16.5" cy="19" r="1.6"/></svg></div>
+          <div class="guide-text">
+            <h4>envios para todo o brasil</h4>
+            <p><strong>Grande São Paulo — R$ 15,00</strong><br/><strong>Demais estados — R$ 25,00</strong><br/>Via transportadora com seguro. Saem todas as sextas-feiras.</p>
+          </div>
+        </div>
+        <div class="guide-row">
+          <div class="guide-icon"><svg viewBox="0 0 24 24"><path d="M12 21s-7-6.3-7-11a7 7 0 1 1 14 0c0 4.7-7 11-7 11z"/><circle cx="12" cy="10" r="2.6"/></svg></div>
+          <div class="guide-text">
+            <h4>retirada em perdizes / sp</h4>
+            <p>Combine pelo WhatsApp e retire sem pagar frete. <strong>Façam suas sacolinhas!</strong></p>
+          </div>
+        </div>
+      </div>
+      <p class="frame-quote">Sua curadoria favorita direto do closet das influenciadoras para o seu!</p>
+      <div class="barcode">
+        <div class="barcode-bars"></div>
+        <div class="barcode-handle">@naoapegobazar</div>
+      </div>
+    </div>
+  </section>
 
   <!-- VIP Community -->
   <section class="vip-block">
@@ -836,8 +900,11 @@ h1,h2,h3,h4,h5,h6,p{margin:0;}
 <script>
 /* ============ CONFIG ============ */
 const CONFIG = {
-  // URL base de publicação da planilha (File > Share > Publish to web > CSV)
-  csvUrl: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTOzoKrPmyC0PJdAgViWTvZFotooklF89mciD2e-aVuCk1lMyw_SiTKjMAFfqpOBF3H2BiOBkHabq0l/pub?gid=1253613754&single=true&output=csv',
+  // Supabase — banco lido pelo painel/cadastro (nao-apego-app); chave anon/publishable,
+  // segura pra expor no client: a view v_catalogo já restringe a peças com status='disponivel'
+  // e o grant de select pra "anon" só permite leitura.
+  supabaseUrl: 'https://gokkvxvsmijswalvuxix.supabase.co',
+  supabaseAnonKey: 'sb_publishable_e4NAY1tuM2E5LhsWY6lWdg_kWXHAKhU',
   whatsappNumber: '5511947032072',
   whatsappGroupLink: '#',               // link do grupo VIP — adicionar depois
   // Dinâmica de desconto progressivo (drop 01/02/desapego final) ainda não está ativa —
@@ -849,17 +916,10 @@ const CONFIG = {
 /* ============ Data helpers ============ */
 let PIECES = [];
 
-function parseEntryDate(str) {
-  if (!str) return null;
-  const mm = {jan:0,fev:1,mar:2,abr:3,mai:4,jun:5,jul:6,ago:7,set:8,out:9,nov:10,dez:11};
-  const m = String(str).toLowerCase().match(/(\d+)[^\d]+([a-z]+)[^\d]+(\d+)/);
-  if (!m) return null;
-  const mon = mm[m[2].replace(/\./g,'')];
-  return (mon !== undefined) ? new Date(2000+parseInt(m[3]), mon, parseInt(m[1])) : null;
-}
-function daysSince(str) {
-  const d = parseEntryDate(str);
-  return d ? Math.max(0, Math.floor((Date.now()-d.getTime())/86400000)) : 0;
+function daysSince(isoStr) {
+  if (!isoStr) return 0;
+  const d = new Date(isoStr);
+  return isNaN(d.getTime()) ? 0 : Math.max(0, Math.floor((Date.now()-d.getTime())/86400000));
 }
 function driveThumb(raw, sz) {
   if (!raw || !raw.trim()) return null;
@@ -878,36 +938,32 @@ function abbrev(name) {
 }
 
 async function loadData() {
-  return new Promise((resolve, reject) => {
-    Papa.parse(CONFIG.csvUrl, {
-      download: true, header: true, skipEmptyLines: true,
-      transformHeader: h => h.trim(), transform: v => v.trim(),
-      complete({ data }) {
-        const hidden = ['Pago','Cancelado','Devolvido'];
-        PIECES = data
-          .filter(r => (r['Código']||'').trim() && (r['Status']||'').trim() && !hidden.includes(r['Status']||''))
-          .map(r => ({
-            id:    r['Código']||'',
-            brand: r['Marca']||'',
-            name:  r['Descritivo Peça']||'',
-            size:  r['Tamanho']||'',
-            color: normalizeCor(r['Cor']||''),
-            tipo:  extractTipo(r['Descritivo Peça']||''),
-            price:     fmtPrice(r['Preço Atual']||r['Preço Total']||''),
-            origPrice: fmtPrice(r['Preço Original']||''),
-            infl:      r['Closet']==='anônimo' ? 'anônimo' : abbrev(r['Closet']||''),
-            closetType: r['Tipo Closet']||'Open',
-            days:  daysSince(r['Data Entrada']),
-            photos: (r['Foto']||'').split('|').map(u=>driveThumb(u.trim(),'w1200')).filter(Boolean),
-            photo: driveThumb((r['Foto']||'').split('|')[0].trim(),'w400'),
-            tag:   daysSince(r['Data Entrada'])<=14 ? 'new' : null,
-            pal:   PALETTES[Math.abs(hash(r['Código']||r['Descritivo Peça']||''))%PALETTES.length],
-          }));
-        resolve();
-      },
-      error: reject,
-    });
+  const res = await fetch(CONFIG.supabaseUrl + '/rest/v1/v_catalogo?select=*', {
+    headers: {
+      apikey: CONFIG.supabaseAnonKey,
+      Authorization: 'Bearer ' + CONFIG.supabaseAnonKey,
+    },
   });
+  if (!res.ok) throw new Error('Supabase v_catalogo: HTTP ' + res.status);
+  const data = await res.json();
+  // status='disponivel' já vem filtrado pela view — não precisa filtrar de novo aqui.
+  PIECES = data.map(r => ({
+    id:    r.codigo || '',
+    brand: r.marca || '',
+    name:  r.titulo || '',
+    size:  r.tamanho || '',
+    color: normalizeCor(r.cor || ''),
+    tipo:  extractTipo(r.titulo || ''),
+    price:     fmtPrice(r.preco),
+    origPrice: fmtPrice(r.preco_original),
+    infl:      r.closet_tipo === 'open' ? abbrev(r.closet_nome || '') : 'anônimo',
+    closetType: r.closet_tipo || 'open',
+    days:  daysSince(r.created_at),
+    photos: (r.fotos || []).map(u => driveThumb(u, 'w1200')).filter(Boolean),
+    photo: driveThumb((r.fotos || [])[0], 'w400'),
+    tag:   daysSince(r.created_at) <= 14 ? 'new' : null,
+    pal:   PALETTES[Math.abs(hash(r.codigo || r.titulo || '')) % PALETTES.length],
+  }));
 }
 
 const PALETTES = [
@@ -1426,7 +1482,7 @@ try{window.parent.postMessage({type:'__edit_mode_available'},'*');}catch(e){}
   document.getElementById('featured-grid').innerHTML = loading;
   document.getElementById('shop-grid').innerHTML = loading;
 
-  try { await loadData(); } catch(e) { console.error('CSV error:', e); }
+  try { await loadData(); } catch(e) { console.error('Erro ao carregar catálogo (Supabase):', e); }
 
   renderFeatured();
   renderShop();

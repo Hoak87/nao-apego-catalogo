@@ -276,6 +276,8 @@ create policy vendas_admin_all   on vendas   for all to authenticated using (tru
 
 ## 4. Patches de segurança imediatos no GAS (fazer AGORA, antes/independente da migração)
 
+✅ **Feito em 10/09/2026** (commit `574077e`) — falta só o deploy (`clasp push` + `clasp deploy`) pra valer em produção.
+
 O GAS continua em produção real por 4-6 semanas — os achados críticos merecem correção mínima já, não esperar a migração:
 
 1. **XSS**: criar uma função `escapeHtml()` no `Admin.html` e aplicá-la em todo template literal que insere `desc`, `marca`, `closet`, `texto`, `tag` etc. vindos do backend em `innerHTML`. Ou trocar `innerHTML` por `textContent` onde não precisa de HTML de fato.
@@ -286,6 +288,10 @@ O GAS continua em produção real por 4-6 semanas — os achados críticos merec
 ---
 
 ## 5. Roadmap de migração (incremental — o negócio não pode parar de vender)
+
+✅ **Etapas 0, 1, 2 e 3 feitas em 10/09/2026.** Painel + cadastro de peça (com IA e ditado, reaproveitando o que já existia no GAS) no ar em **https://nao-apego.vercel.app** (senha = a mesma do admin GAS atual), testado em produção com peça real (criada e limpa dos dois lados).
+
+🔴 **Decisão pendente do Henrique**: a partir da Etapa 3, o Supabase é a fonte de verdade pra peça **nova**. Pra isso valer de fato, a Luiza precisa passar a cadastrar peça pela tela nova (`/painel/cadastro`) em vez da aba "nova peça" do admin antigo — o Sheets continua recebendo um espelho automático, mas se ela continuar cadastrando pelos dois lados, os códigos podem entrar em conflito (cada lado gerando sequência a partir da própria vista dos dados). Avisar ela antes de ela usar a tela nova pra valer. Projeto Supabase `nao-apego` (região São Paulo) criado, schema aplicado, ESTOQUE importado: 1.351 peças, 800 vendas, 25 closets, 229 clientes — números conferidos (split variável por peça confirmado nos dados reais: Bea Romano tem peças a 80% e a 100%, por exemplo). Código em `/Users/oak/nao-apego-app` (repo git próprio). Sheets continua sendo a fonte de verdade — nada mudou pra Luiza ainda.
 
 0. **Patches de segurança** (§4) — 1-2 dias, sem dependência do resto.
 1. **Setup Supabase** com o schema corrigido (§3) + script de seed que importa ESTOQUE → `closets`/`pecas`/`clientes`, normalizando `Compradora` (agrupar por valor exato primeiro, sem dedupe automático agressivo — mesma cautela que já estava em `PLANO-GESTAO.md` Fase 3) e preservando o código legado (`BR2502020` etc.) como `codigo`. Sheets continua sendo a fonte de verdade.
