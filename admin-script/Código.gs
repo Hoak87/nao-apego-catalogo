@@ -54,6 +54,38 @@ function _limparTentativasLogin_() {
   } catch (e) {}
 }
 
+// ─── SANITIZAÇÃO CONTRA INJEÇÃO DE FÓRMULA ──────────────────────────────────
+// Texto vindo de fora (HTTP, formulário, IA) nunca deve ser interpretado como fórmula
+// pelo Sheets. setValue() trata uma string começando com =, +, - ou @ como fórmula;
+// prefixamos apóstrofo pra forçar leitura como texto puro, sem mudar o valor visível.
+function _sanitizarTexto_(v) {
+  if (typeof v !== 'string') return v;
+  return /^[=+\-@]/.test(v) ? "'" + v : v;
+}
+function _sanitizarRow_(row) {
+  return row.map(_sanitizarTexto_);
+}
+
+// ─── LOG DE AÇÕES HTTP ───────────────────────────────────────────────────────
+// Registra toda action chamada via HTTP (?action=...) numa aba LOG simples — a senha do
+// admin hoje é única e compartilhada entre leitura/escrita/exclusão, então isso é o mínimo
+// de rastreabilidade de quem/quando fez o quê, sem exigir um mecanismo de auth novo.
+function _logAcao_(action, params) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName('LOG');
+    if (!sheet) {
+      sheet = ss.insertSheet('LOG');
+      sheet.getRange(1, 1, 1, 3).setValues([['Quando', 'Ação', 'Parâmetros']]);
+    }
+    const safe = Object.assign({}, params);
+    delete safe.pwd; // nunca logar a senha
+    sheet.appendRow([new Date(), action, JSON.stringify(safe)]);
+  } catch (e) {
+    // logging nunca pode travar a ação real
+  }
+}
+
 function doGet(e) {
   try {
     const pwd = (e && e.parameter && e.parameter.pwd) || '';
@@ -78,6 +110,10 @@ function doGet(e) {
     }
 
     _limparTentativasLogin_();
+
+    if (e && e.parameter && e.parameter.action) {
+      _logAcao_(e.parameter.action, e.parameter);
+    }
 
     // Ação HTTP simples pra registrar venda via curl (ex: Henrique manda os dados da venda
     // no chat e o Claude chama essa URL) — reaproveita a mesma senha do admin acima,
@@ -644,7 +680,7 @@ function createPiece(data) {
       'Comissão': split.comissao,
       'Origem Cadastro': 'Automático',
     };
-    const estRow = headers.map(h => estValues[h] !== undefined ? estValues[h] : '');
+    const estRow = _sanitizarRow_(headers.map(h => estValues[h] !== undefined ? estValues[h] : ''));
     const novaLinha = estLastDataRow + 1;
     estoque.getRange(novaLinha, 1, 1, estRow.length).setValues([estRow]);
     // Copia só a formatação (bordas, grade, cor, número) da linha de cima — sem mexer nos valores.
@@ -686,7 +722,7 @@ function createPiece(data) {
         'Drop Atual': 'Drop 01',
         'Status Drop': '✓ ok',
       };
-      const catRow = catHead.map(h => catValues[h] !== undefined ? catValues[h] : '');
+      const catRow = _sanitizarRow_(catHead.map(h => catValues[h] !== undefined ? catValues[h] : ''));
       const catNovaLinha = catLastDataRow + 1;
       catalogo.getRange(catNovaLinha, 1, 1, catRow.length).setValues([catRow]);
       if (catLastDataRow > 1) {
@@ -773,7 +809,7 @@ function registrarVenda(row, compradora, precoVenda) {
 
     const agora = new Date();
     estoque.getRange(row, statusCol + 1).setValue('Pago');
-    if (compradoraCol > -1) estoque.getRange(row, compradoraCol + 1).setValue(compradora);
+    if (compradoraCol > -1) estoque.getRange(row, compradoraCol + 1).setValue(_sanitizarTexto_(compradora));
     estoque.getRange(row, dataVendaCol + 1).setValue(agora);
     estoque.getRange(row, precoVendaCol + 1).setValue(preco);
     // Mês/Ano refletem a Data Venda (confirmado batendo com vendas já existentes); repasse
@@ -929,7 +965,7 @@ function registrarVendaDireta(data) {
       'Status Repasse': 'Pendente',
       'Data Repasse': '',
     };
-    const estRow = headers.map(h => estValues[h] !== undefined ? estValues[h] : '');
+    const estRow = _sanitizarRow_(headers.map(h => estValues[h] !== undefined ? estValues[h] : ''));
     const novaLinha = estLastDataRow + 1;
     estoque.getRange(novaLinha, 1, 1, estRow.length).setValues([estRow]);
     // Formatação/banding são só cosmético — não podem derrubar o registro da venda (ex: um
@@ -1135,18 +1171,26 @@ function _handleRepassesPendentesAction_() {
 
 // Remove uma linha do ESTOQUE pelo Código exato — usada só pra limpar linhas órfãs (ex: um
 // registro que gravou os dados mas falhou depois na formatação, antes do fix fail-safe).
-// Confirma o Status atual antes de apagar, pra nunca remover a linha errada.
+// Exige "statusEsperado" e confirma contra o Status real da linha antes de apagar (corrigido
+// 10/09/2026 — antes esse comentário prometia a checagem mas ela não existia no código).
 function _handleDeleteByCodigoAction_(params) {
   try {
     const codigo = String(params.codigo || '').trim();
     if (!codigo) throw new Error('Parâmetro "codigo" é obrigatório.');
+    // Exige o Status esperado da linha antes de apagar — sem isso, um "codigo" certo com
+    // request errado (replay, digitação, código copiado de outra sessão) apagava qualquer
+    // linha incondicionalmente, mesmo peça já vendida e reconciliada. Nunca deixa apagar Pago.
+    const statusEsperado = String(params.statusEsperado || '').trim();
+    if (!statusEsperado) throw new Error('Parâmetro "statusEsperado" é obrigatório (confirme o Status atual da peça antes de apagar).');
+    if (statusEsperado === 'Pago') throw new Error('Não é permitido apagar peça com Status "Pago" por esta action.');
 
     const lock = LockService.getScriptLock();
     lock.waitLock(30000);
     try {
       const sheet   = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
       const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(h => String(h).trim());
-      const idCol   = headers.indexOf('Código');
+      const idCol     = headers.indexOf('Código');
+      const statusCol = headers.indexOf('Status');
       const lastRow = sheet.getLastRow();
       const ids = sheet.getRange(2, idCol + 1, lastRow - 1, 1).getValues().flat().map(v => String(v).trim());
       const idx = ids.indexOf(codigo);
@@ -1154,6 +1198,11 @@ function _handleDeleteByCodigoAction_(params) {
 
       const row = idx + 2;
       const rowValues = sheet.getRange(row, 1, 1, sheet.getLastColumn()).getValues()[0];
+      const statusAtual = String(rowValues[statusCol] || '').trim();
+      if (statusAtual !== statusEsperado) {
+        throw new Error('Status atual ("' + statusAtual + '") não bate com statusEsperado ("' + statusEsperado + '") — abortado pra não apagar a linha errada.');
+      }
+      if (statusAtual === 'Pago') throw new Error('Não é permitido apagar peça com Status "Pago".');
       // deleteRow() estava silenciosamente não fazendo efeito (suspeita: intervalo protegido
       // bloqueando a exclusão estrutural da linha, mesmo permitindo editar valores). Em vez de
       // apagar a linha, limpamos o conteúdo — funciona mesmo com essa proteção, e uma linha em
@@ -1182,7 +1231,7 @@ function _handleDeleteByCodigoAction_(params) {
 function _handleRenameClosetAction_(params) {
   try {
     const oldName = String(params.oldName || '').trim();
-    const newName = String(params.newName || '').trim();
+    const newName = _sanitizarTexto_(String(params.newName || '').trim());
     if (!oldName || !newName) throw new Error('Parâmetros "oldName" e "newName" são obrigatórios.');
 
     const lock = LockService.getScriptLock();
@@ -1246,7 +1295,7 @@ function _handleUpdateFieldsAction_(params) {
         if (params[name] === undefined) return;
         const col = headers.indexOf(name);
         if (col === -1) return;
-        sheet.getRange(row, col + 1).setValue(params[name]);
+        sheet.getRange(row, col + 1).setValue(_sanitizarTexto_(params[name]));
         changed[name] = params[name];
         cols[name] = col;
       });
@@ -1435,10 +1484,10 @@ function _handleMarcarExistenteVendidaAction_(params) {
       }
 
       sheet.getRange(row, statusCol + 1).setValue('Pago');
-      sheet.getRange(row, compradoraCol + 1).setValue(compradora);
+      sheet.getRange(row, compradoraCol + 1).setValue(_sanitizarTexto_(compradora));
       sheet.getRange(row, dataVendaCol + 1).setValue(dataVenda);
       sheet.getRange(row, precoVendaCol + 1).setValue(preco);
-      if (params.formaPagamento !== undefined) sheet.getRange(row, pagamentoCol + 1).setValue(params.formaPagamento);
+      if (params.formaPagamento !== undefined) sheet.getRange(row, pagamentoCol + 1).setValue(_sanitizarTexto_(params.formaPagamento));
       sheet.getRange(row, mesCol + 1).setValue(MESES_PT[dataVenda.getMonth()]);
       sheet.getRange(row, anoCol + 1).setValue(dataVenda.getFullYear());
       sheet.getRange(row, statusRepasseCol + 1).setValue('Pendente');
@@ -1549,7 +1598,7 @@ function _handleTestWriteCellAction_(params) {
 
     const antes = sheet.getRange(row, campoCol + 1).getValue();
     const cell = sheet.getRange(row, campoCol + 1);
-    cell.setValue(valor);
+    cell.setValue(_sanitizarTexto_(valor));
     SpreadsheetApp.flush();
     const depois = cell.getValue();
     const depoisReRead = sheet.getRange(row, campoCol + 1).getValue(); // nova referência de range, não reaproveitada
@@ -1666,6 +1715,7 @@ function getTasks() {
 function addTask(texto, tag) {
   texto = String(texto || '').trim();
   if (!texto) throw new Error('Texto da tarefa é obrigatório.');
+  tag = String(tag || '').trim();
 
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);
@@ -1673,8 +1723,8 @@ function addTask(texto, tag) {
     const sheet    = getOrCreateTarefasSheet_();
     const id       = Utilities.getUuid();
     const criadaEm = new Date();
-    sheet.appendRow([id, texto, tag || '', false, criadaEm, '']);
-    return { id: id, texto: texto, tag: tag || '', feita: false, criadaEm: criadaEm.toISOString(), concluidaEm: '' };
+    sheet.appendRow([id, _sanitizarTexto_(texto), _sanitizarTexto_(tag), false, criadaEm, '']);
+    return { id: id, texto: texto, tag: tag, feita: false, criadaEm: criadaEm.toISOString(), concluidaEm: '' };
   } finally {
     lock.releaseLock();
   }

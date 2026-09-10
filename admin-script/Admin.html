@@ -453,6 +453,15 @@
     });
   }
 
+  // Todo texto vindo do backend (Sheets/HTTP) precisa passar por aqui antes de entrar em
+  // innerHTML — sem isso, um valor gravado via action HTTP (ex: updateFields, addTask) roda
+  // como HTML/JS dentro da mesma página que tem google.script.run disponível.
+  function escapeHtml(str) {
+    return String(str == null ? '' : str)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
   function formatPrice(raw) {
     const n = parseFloat(String(raw).replace(/[R$\s"]/g, '').replace(',', '.'));
     return isNaN(n) ? '' : 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 0 });
@@ -517,11 +526,11 @@
   }
 
   function taskRowHtml(t) {
-    return `<div class="task ${t.feita ? 'done' : ''}" data-id="${t.id}">
+    return `<div class="task ${t.feita ? 'done' : ''}" data-id="${escapeHtml(t.id)}">
       <div class="task-check">✓</div>
       <div class="task-body">
-        <div class="task-title">${t.texto}</div>
-        ${t.tag ? `<div class="task-meta"><span class="task-tag">${t.tag}</span></div>` : ''}
+        <div class="task-title">${escapeHtml(t.texto)}</div>
+        ${t.tag ? `<div class="task-meta"><span class="task-tag">${escapeHtml(t.tag)}</span></div>` : ''}
       </div>
     </div>`;
   }
@@ -671,7 +680,7 @@
       ...closets.map(c => {
         const count = vis.filter(p => p.closet === c).length;
         return count > 0
-          ? `<button class="filter-chip" data-closet="${c}">${c} (${count})</button>`
+          ? `<button class="filter-chip" data-closet="${escapeHtml(c)}">${escapeHtml(c)} (${count})</button>`
           : '';
       })
     ].filter(Boolean).join('');
@@ -707,9 +716,9 @@
           ${p.localPreview ? `<img src="${p.localPreview}">` : p.photoUrl ? `<img src="${p.photoUrl}">` : '👗'}
         </div>
         <div class="piece-info">
-          <div class="piece-id">${p.id} · ${p.closet}</div>
-          <div class="piece-desc">${p.desc}</div>
-          <div class="piece-meta">${[p.brand, p.size, formatPrice(p.price)].filter(Boolean).join(' · ')}</div>
+          <div class="piece-id">${escapeHtml(p.id)} · ${escapeHtml(p.closet)}</div>
+          <div class="piece-desc">${escapeHtml(p.desc)}</div>
+          <div class="piece-meta">${[escapeHtml(p.brand), escapeHtml(p.size), formatPrice(p.price)].filter(Boolean).join(' · ')}</div>
         </div>
         <div class="add-icon" id="icon-${p.row}">${p.hasPhoto ? '↺' : '+'}</div>
       </div>`).join('')}</div>`;
@@ -824,7 +833,7 @@
       `<button class="filter-chip is-on" data-closet="todos">todas (${vendaPieces.length})</button>`,
       ...closets.map(c => {
         const count = vendaPieces.filter(p => p.closet === c).length;
-        return `<button class="filter-chip" data-closet="${c}">${c} (${count})</button>`;
+        return `<button class="filter-chip" data-closet="${escapeHtml(c)}">${escapeHtml(c)} (${count})</button>`;
       })
     ].join('');
 
@@ -855,9 +864,9 @@
       <div class="piece-card" data-row="${p.row}">
         <div class="thumb">${p.photoUrl ? `<img src="${p.photoUrl}">` : '👗'}</div>
         <div class="piece-info">
-          <div class="piece-id">${p.id} · ${p.closet}</div>
-          <div class="piece-desc">${p.desc}</div>
-          <div class="piece-meta">${[p.brand, p.size, formatPrice(p.price)].filter(Boolean).join(' · ')}</div>
+          <div class="piece-id">${escapeHtml(p.id)} · ${escapeHtml(p.closet)}</div>
+          <div class="piece-desc">${escapeHtml(p.desc)}</div>
+          <div class="piece-meta">${[escapeHtml(p.brand), escapeHtml(p.size), formatPrice(p.price)].filter(Boolean).join(' · ')}</div>
         </div>
       </div>`).join('')}</div>`;
 
@@ -988,7 +997,7 @@
 
     sel.innerHTML =
       '<option value="" disabled' + (lastClosetUsed ? '' : ' selected') + '>selecione…</option>' +
-      allClosets.map(c => `<option value="${c}"${c === lastClosetUsed ? ' selected' : ''}>${c}</option>`).join('') +
+      allClosets.map(c => `<option value="${escapeHtml(c)}"${c === lastClosetUsed ? ' selected' : ''}>${escapeHtml(c)}</option>`).join('') +
       '<option value="__outro__">outro closet…</option>';
   }
 
