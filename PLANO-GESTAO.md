@@ -1,6 +1,8 @@
 # Plano — Hub de Gestão "não apego"
 
 > **Para o agente que vai executar este plano:** este documento é autocontido. Leia tudo antes de começar. Trabalhe fase por fase, na ordem. Ao final de cada fase há critérios de aceitação — não avance sem cumpri-los. O usuário (Henrique) faz os passos manuais marcados com 🧑.
+>
+> 🔴 **Atualização 10/09/2026:** Fases 0 e 1 abaixo foram executadas. **Fases 2 (Painel) e 3 (CRM) NÃO devem mais ser implementadas aqui** — decisão de congelar o GAS para features novas e migrar para Next.js+Supabase. Ver crítica completa e roadmap em `PLANO-MIGRACAO-CRM.md`.
 
 ---
 
