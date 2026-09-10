@@ -172,6 +172,9 @@ function doGet(e) {
     if (e && e.parameter && e.parameter.action === 'exportEstoque') {
       return _handleExportEstoqueAction_();
     }
+    if (e && e.parameter && e.parameter.action === 'removerDoCatalogo') {
+      return _handleRemoverDoCatalogoAction_(e.parameter);
+    }
 
     return HtmlService
       .createHtmlOutputFromFile('Admin')
@@ -184,6 +187,147 @@ function doGet(e) {
       '<b>Erro ao carregar o admin:</b><br>' + (err && err.message ? err.message : String(err)) +
       '</div>'
     );
+  }
+}
+
+// POST com corpo JSON — usado pelo app novo (nao-apego-app) pra ações com payload grande
+// (fotos em base64), que não cabem numa querystring de doGet. Mesma senha do admin, agora
+// no corpo em vez da URL (reduz exposição em histórico/log — achado de segurança da migração).
+function doPost(e) {
+  try {
+    const body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
+    const senhaConfigurada = PropertiesService.getScriptProperties().getProperty('ADMIN_PASSWORD') || '';
+    if (!senhaConfigurada || body.pwd !== senhaConfigurada) {
+      return ContentService.createTextOutput(JSON.stringify({ ok: false, error: 'Senha inválida.' }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    _logAcao_(body.action, body);
+
+    if (body.action === 'analisarFoto') {
+      return ContentService.createTextOutput(JSON.stringify({ ok: true, resultado: analyzeNewPiece(body.fotos) }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    if (body.action === 'analisarTexto') {
+      return ContentService.createTextOutput(JSON.stringify({ ok: true, resultado: analyzeVoiceText(body.texto) }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    if (body.action === 'uploadFotos') {
+      const folder = getOrCreateFolder();
+      const urls = _uploadPhotosParallel_(folder, body.fotos, body.codigo);
+      return ContentService.createTextOutput(JSON.stringify({ ok: true, urls: urls }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    if (body.action === 'criarPecaSync') {
+      return ContentService.createTextOutput(JSON.stringify({ ok: true, resultado: _criarPecaSync_(body) }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: 'Action desconhecida: ' + body.action }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Grava no ESTOQUE+CATALOGO uma peça que já nasceu no Supabase (nao-apego-app, Etapa 3 do
+// PLANO-MIGRACAO-CRM.md) — o código e o split (repasse/comissão) já foram decididos lá
+// (o Supabase é a fonte de verdade pra peça nova a partir desta etapa); esta função só
+// espelha pro Sheets, sem gerar código nem herdar split de novo, pra nunca divergir dos
+// dois lados. As fotos já devem estar no Drive (action "uploadFotos") antes de chamar isto.
+function _criarPecaSync_(data) {
+  if (!data.closet) throw new Error('Closet é obrigatório.');
+  if (!data.codigo) throw new Error('Código é obrigatório.');
+  if (!data.descritivo) throw new Error('Descritivo é obrigatório.');
+  const preco = parseFloat(String(data.preco).replace(',', '.'));
+  if (isNaN(preco) || preco <= 0) throw new Error('Preço inválido.');
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const estoque = ss.getSheetByName(SHEET_NAME);
+    _ensureOrigemCadastroColumn_(estoque);
+    const headers = estoque.getRange(1, 1, 1, estoque.getLastColumn()).getValues()[0].map(h => String(h).trim());
+    const colOf = name => headers.indexOf(name);
+    const { lastRow: estLastDataRow, codigoValues: codes } = _lastDataRow_(estoque, colOf('Código'));
+
+    if (codes.indexOf(data.codigo) > -1) {
+      throw new Error('Código já existe no ESTOQUE (' + data.codigo + ') — provável sync duplicado.');
+    }
+
+    const fotoStr = (data.fotoUrls || []).join('|');
+    const repasse = data.repasse !== undefined ? Number(data.repasse) : 0.6;
+    const comissao = data.comissao !== undefined ? Number(data.comissao) : (1 - repasse);
+
+    const estValues = {
+      'Código': data.codigo,
+      'Marca': data.marca || '',
+      'Descritivo Peça': data.descritivo,
+      'Tamanho': data.tamanho || '',
+      'Cor': data.cor || '',
+      'Status': 'Disponível',
+      'Preço Total': preco,
+      'Data Entrada': new Date(),
+      'Closet': data.closet,
+      'Foto': fotoStr,
+      'Repasse': repasse,
+      'Comissão': comissao,
+      'Origem Cadastro': 'Automático',
+    };
+    const estRow = _sanitizarRow_(headers.map(h => estValues[h] !== undefined ? estValues[h] : ''));
+    const novaLinha = estLastDataRow + 1;
+    estoque.getRange(novaLinha, 1, 1, estRow.length).setValues([estRow]);
+    if (estLastDataRow > 1) {
+      estoque.getRange(estLastDataRow, 1, 1, estoque.getLastColumn())
+        .copyTo(estoque.getRange(novaLinha, 1, 1, estoque.getLastColumn()), SpreadsheetApp.CopyPasteType.PASTE_FORMAT, false);
+    }
+    _extendBandingIfNeeded_(estoque, novaLinha);
+    const repasseCol = colOf('Repasse');
+    const comissaoCol = colOf('Comissão');
+    if (repasseCol > -1) estoque.getRange(novaLinha, repasseCol + 1).setNumberFormat('0%');
+    if (comissaoCol > -1) estoque.getRange(novaLinha, comissaoCol + 1).setNumberFormat('0%');
+
+    const valorRepasseCol = colOf('Valor Repasse');
+    const valorComissaoCol = colOf('Valor Comissão');
+    _copyOrComputeValorCol_(estoque, estLastDataRow, novaLinha, valorRepasseCol, preco * repasse);
+    _copyOrComputeValorCol_(estoque, estLastDataRow, novaLinha, valorComissaoCol, preco * comissao);
+
+    const catalogo = ss.getSheetByName('CATALOGO');
+    if (catalogo && catalogo.getLastRow() >= 1) {
+      const catHead = catalogo.getRange(1, 1, 1, catalogo.getLastColumn()).getValues()[0].map(h => String(h).trim());
+      const { lastRow: catLastDataRow } = _lastDataRow_(catalogo, catHead.indexOf('Código'));
+      const catValues = {
+        'Código': data.codigo,
+        'Marca': data.marca || '',
+        'Descritivo Peça': data.descritivo,
+        'Tamanho': data.tamanho || '',
+        'Cor': data.cor || '',
+        'Status': 'Disponível',
+        'Data Entrada': new Date(),
+        'Closet': data.closet,
+        'Tipo Closet': 'Open',
+        'Foto': fotoStr,
+        'Preço Original': preco,
+        'Sugestão Drop 02': Math.round(preco * 0.8 / 10) * 10,
+        'Sugestão Desapego Final': Math.round(preco * 0.6 / 10) * 10,
+        'Preço Atual': preco,
+        'Drop Atual': 'Drop 01',
+        'Status Drop': '✓ ok',
+      };
+      const catRow = _sanitizarRow_(catHead.map(h => catValues[h] !== undefined ? catValues[h] : ''));
+      const catNovaLinha = catLastDataRow + 1;
+      catalogo.getRange(catNovaLinha, 1, 1, catRow.length).setValues([catRow]);
+      if (catLastDataRow > 1) {
+        catalogo.getRange(catLastDataRow, 1, 1, catalogo.getLastColumn())
+          .copyTo(catalogo.getRange(catNovaLinha, 1, 1, catalogo.getLastColumn()), SpreadsheetApp.CopyPasteType.PASTE_FORMAT, false);
+      }
+      _extendBandingIfNeeded_(catalogo, catNovaLinha);
+    }
+
+    return { codigo: data.codigo, row: novaLinha };
+  } finally {
+    lock.releaseLock();
   }
 }
 
@@ -1510,6 +1654,30 @@ function _handleMarcarExistenteVendidaAction_(params) {
     } finally {
       lock.releaseLock();
     }
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Remove uma linha do CATALOGO pelo Código — usada pra limpar teste/engano sem esperar uma
+// venda (que é o único outro caminho que hoje tira uma peça do catálogo público).
+function _handleRemoverDoCatalogoAction_(params) {
+  try {
+    const codigo = String(params.codigo || '').trim();
+    if (!codigo) throw new Error('Parâmetro "codigo" é obrigatório.');
+    const catalogo = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('CATALOGO');
+    if (!catalogo) throw new Error('Aba CATALOGO não encontrada.');
+    const catHead = catalogo.getRange(1, 1, 1, catalogo.getLastColumn()).getValues()[0].map(h => String(h).trim());
+    const catIdCol = catHead.indexOf('Código');
+    const catLastRow = catalogo.getLastRow();
+    if (catIdCol === -1 || catLastRow < 2) throw new Error('CATALOGO vazio ou sem coluna Código.');
+    const catIds = catalogo.getRange(2, catIdCol + 1, catLastRow - 1, 1).getValues().flat().map(String);
+    const idx = catIds.indexOf(codigo);
+    if (idx === -1) throw new Error('Código não encontrado no CATALOGO: ' + codigo);
+    catalogo.getRange(idx + 2, 1, 1, catalogo.getLastColumn()).clearContent();
+    return ContentService.createTextOutput(JSON.stringify({ ok: true, codigo: codigo }))
+      .setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
     return ContentService.createTextOutput(JSON.stringify({ ok: false, error: err.message }))
       .setMimeType(ContentService.MimeType.JSON);
